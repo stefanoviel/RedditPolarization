@@ -1,0 +1,22 @@
+code structure
+
+SRC
+    (one file for each step of the pipeline)
+    load stuff into db
+    embed everything
+    dimnesionality reduction
+    clustering
+    topic finding
+    main
+scripts
+    main.py
+    run_main.sh 
+    
+config.py
+
+
+Order stuff to embed by length 
+Check the data what is there? Just links maybe? 
+Path parametrised
+File che mi servono 
+No ripetizioni

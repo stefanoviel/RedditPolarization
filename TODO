@@ -21,6 +21,10 @@ Path parametrised
 No ripetizioni
 
 
-
 load module automatically 
 requirement.txt
+
+module load gcc/8.2.0 python/3.10.4 jupyterlab/3.5.1
+
+problems: 
+can't load packages I need

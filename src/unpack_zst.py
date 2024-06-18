@@ -84,5 +84,5 @@ if __name__ == '__main__':
     # test that everything is working
     for n, line in enumerate(read_lines_zst(file_name='/cluster/work/coss/anmusso/reddit/submissions/RS_2023-09.zst')): 
         print(line)
-        if n > 5: 
-            break
+         
+        break

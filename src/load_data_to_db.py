@@ -10,9 +10,7 @@ logger = configure_get_logger(config.OUTPUT_PATH)
 os.environ['NUMEXPR_MAX_THREADS'] = '32'  
 import numexpr
 
-
-from src.unpack_zst import read_lines_zst
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import json
 import duckdb
 from tqdm import tqdm
@@ -27,15 +25,18 @@ row_count = 0
 row_count_lock = threading.Lock()
 stop_monitor = False
  
-def keep_relevant_submissions(line_json, min_num_characters=20):
+def filter_submissions_by_content_length(line_json: Dict[str, Any], min_num_characters: int = 20) -> Optional[Dict[str, Any]]:
+    """Filter out submissions with less than min_num_characters in the title and selftext."""
+
     if len(line_json.get('title', '') + line_json.get('selftext', '')) > min_num_characters:
         desired_attributes = {'subreddit', 'score', 'author', 'created_utc', 'title', 'id', 'num_comments', 'upvote_ratio', 'selftext'}
         return {key: line_json[key] for key in desired_attributes if key in line_json}
     return None
 
 
-def setup_database(db_file):
-    # Establish a connection to handle schema setup.
+def setup_database_create_table(db_file: str) -> None:
+    """Set up the database schema for storing Reddit submissions."""
+
     conn = duckdb.connect(db_file)
     conn.execute("DROP TABLE IF EXISTS submissions")
     conn.execute("""CREATE TABLE IF NOT EXISTS submissions (
@@ -52,52 +53,65 @@ def setup_database(db_file):
     conn.close()
 
 
-def process_file(file_path, db_file, index, batch_size=100):
-    print(f"Thread {index} started")
-    local_conn = duckdb.connect(db_file).cursor()  # Create a DuckDB cursor for the thread
+def add_compressed_file_to_db(file_path: str, db_file: str, index: int, batch_size: int) -> None:
+    """Read a zstd-compressed file and insert relevant data into a DuckDB database."""
 
-    buffer = []  # Buffer to hold data rows before batch insert
+    logger.info(f"Thread {index} started")
+    local_conn = duckdb.connect(db_file).cursor()  # Create a DuckDB cursor for the thread
+    rows_buffer = [] 
 
     with open(file_path, 'rb') as file_handle:
+        # max_window_size is set to 2 GB otherwise the default 128 MB is too small for some files
         reader = zstd.ZstdDecompressor(max_window_size=2147483648).stream_reader(file_handle)
         while True:
             chunk = reader.read(2**27)  # Read 128 MB at a time
             if not chunk:
                 break
             data = chunk.decode('utf-8').split('\n')
-            for line in data[:-1]:
+            for line in data:
                 try:
                     line_json = json.loads(line)
-                    filtered_data = keep_relevant_submissions(line_json)
-                    if filtered_data:
-                        buffer.append(filtered_data)
-                        if len(buffer) >= batch_size:
-                            insert_into_db(local_conn, buffer)
-                            buffer.clear()
-                            with row_count_lock:
+                    filtered_rows = filter_submissions_by_content_length(line_json)
+                    if filtered_rows:
+                        rows_buffer.append(filtered_rows)
+                        if len(rows_buffer) >= batch_size:
+                            insert_into_db(local_conn, rows_buffer)
+                            rows_buffer.clear()
+                            with row_count_lock: # Keep track of the total number of rows written
                                 global row_count
                                 row_count += batch_size 
                 except json.JSONDecodeError:
                     continue
 
     # Insert any remaining rows in the buffer after loop ends
-    if buffer:
-        insert_into_db(local_conn, buffer)
+    if rows_buffer:
+        insert_into_db(local_conn, rows_buffer)
 
-    print(f"Thread {index} finished")
+    logger.info(f"Thread {index} finished")
 
-def insert_into_db(connection, data_batch):
+
+def monitor_rows() -> None:
+    """Monitor the total number of rows written to the database."""
+    global stop_monitor
+    while not stop_monitor:
+        with row_count_lock:
+            print(f"Total rows written: {row_count:,}", end='\r')
+        time.sleep(1)  # Update every second
+
+def insert_into_db(connection: duckdb.DuckDBPyConnection, data_batch: List[Dict[str, Any]]) -> None:
+    """Insert a batch of data into the database."""
+
     if not data_batch:
         return
 
-    # Assuming all data in batch have the same keys
     expected_keys = {'subreddit', 'score', 'author', 'created_utc', 'title', 'id', 'num_comments', 'selftext'}
     columns = ', '.join(data_batch[0].keys())
     placeholders = ', '.join(['?'] * len(data_batch[0]))
     query = f"INSERT INTO submissions ({columns}) VALUES ({placeholders})"
 
-   # Filter and validate data entries
     valid_data_batch = []
+
+    # Filter out rows with missing or None values 
     for row in data_batch:
         if set(row.keys()) == expected_keys and None not in row.values():
             valid_data_batch.append(row)
@@ -111,33 +125,24 @@ def insert_into_db(connection, data_batch):
             connection.executemany(query, values)
             connection.commit()
         else:
-            print("No valid data to insert.")
+            logger.warning("No valid data to insert.")
     except Exception as e:
-        print(f"Error during database insert operation: {e}")
+        logger.warning(f"Error during database insert operation: {e}")
         connection.rollback()
 
-    # if len(valid_data_batch) < len(data_batch):
-    #     print(f"Removed {len(data_batch) - len(valid_data_batch)} invalid entries out of {len(data_batch)} total.")
 
-
-def monitor_rows():
-    global stop_monitor
-    while not stop_monitor:
-        with row_count_lock:
-            print(f"Total rows written: {row_count:,}", end='\r')
-        time.sleep(1)  # Update every second
-
-def main(directory, db_file):
+def main(directory: str, db_file: str) -> None:
+    """Main function to load Reddit data into a DuckDB database."""
     global stop_monitor
 
-    setup_database(db_file)
+    setup_database_create_table(db_file)
 
     threads = []
     count = 0 
     for file_name in os.listdir(directory):
         if file_name.endswith('.zst'):
             file_path = os.path.join(directory, file_name)
-            thread = threading.Thread(target=process_file, args=(file_path, db_file, count, 20000))
+            thread = threading.Thread(target=add_compressed_file_to_db, args=(file_path, db_file, count, 20000))
             threads.append(thread)
             thread.start()
             count += 1
@@ -150,7 +155,7 @@ def main(directory, db_file):
 
     stop_monitor = True
     monitor_thread.join()
-    print(f"Final total rows written: {row_count}")
+    logger.info(f"Final total rows written: {row_count}")
 
 
 

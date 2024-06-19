@@ -1,1 +1,4 @@
 data/*
+output/*
+*.db
+__pycache__/

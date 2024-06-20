@@ -16,10 +16,12 @@ TABLE_NAME = 'submissions'
 MIN_SCORE = 10
 MIN_POST_LENGTH = 20
 
+# Embeddings 
 EMBEDDINGS_FILE = 'data/embeddings/embeddings.h5'
-
 MODEL_NAME = 'all-MiniLM-L6-v2' 
 
+# Dimensionality reduction 
+DIMENSIONALITY_REDUCTION_FILE = 'data/embeddings/dimensional_reduction.h5'
 UMAP_COMPONENTS = 5
 UMAP_N_Neighbors = 50
 UMAP_MINDIST = 0.01

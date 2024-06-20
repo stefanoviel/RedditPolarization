@@ -1,18 +1,3 @@
-code structure
-
-SRC
-    (one file for each step of the pipeline)
-    load stuff into db
-    embed everything
-    dimnesionality reduction
-    clustering
-    topic finding
-    main
-scripts
-    main.py
-    run_main.sh 
-    
-config.py
 
 
 Order stuff to embed by length 
@@ -22,10 +7,10 @@ No ripetizioni
 
 
 TODO:
-load module automatically 
-requirement.txt
+for evaluation use:
+https://scikit-learn.org/stable/modules/generated/sklearn.manifold.trustworthiness.html
+
+
 
 module load gcc/8.2.0 python/3.10.4 jupyterlab/3.5.1
 
-problems: 
-can't load packages I need

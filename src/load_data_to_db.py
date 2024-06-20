@@ -27,7 +27,7 @@ discarded_rows = 0
 row_count_lock = threading.Lock()
 stop_monitor = False
 
-def filter_submissions_by_content_length(line_json: Dict[str, Any], min_num_characters: int = 20, min_interactions: int = 10) -> Optional[Dict[str, Any]]:
+def filter_submissions_by_content_length(line_json: Dict[str, Any], min_num_characters: int = 20, min_score: int = 10) -> Optional[Dict[str, Any]]:
     """Filter out submissions with less than min_num_characters in the title and selftext, 
     ensuring they're in English, and have a minimum number of interactions."""
 
@@ -41,16 +41,16 @@ def filter_submissions_by_content_length(line_json: Dict[str, Any], min_num_char
     if len(combined_text) <= min_num_characters:
         return None
     
-    # # Language detection to filter only English posts PROBLEM: it is too slow
+    score = line_json.get('score', 0)
+    if - min_score < score  < min_score: # a comment is relevant if it obtained a very positive or very negative response
+        return None
+    
+    # Language detection to filter only English posts PROBLEM: it is too slow
     # try:
     #     if detect(combined_text) != 'en':
     #         return None
     # except:
     #     return None  
-
-    score = line_json.get('score', 0)
-    if score  < min_interactions:
-        return None
 
     # Select desired attributes
     desired_attributes = {'subreddit', 'score', 'author', 'created_utc', 'title', 'id', 'num_comments', 'upvote_ratio', 'selftext'}
@@ -99,7 +99,7 @@ def add_compressed_file_to_db(file_path: str, db_file: str, index: int, batch_si
                 try:
                     line_json = json.loads(line)
                     # print(json.dumps(line_json, indent=4))
-                    filtered_rows = filter_submissions_by_content_length(line_json)
+                    filtered_rows = filter_submissions_by_content_length(line_json, config.MIN_POST_LENGTH, config.MIN_SCORE)
                     if filtered_rows:
                         rows_buffer.append(filtered_rows)
                         if len(rows_buffer) >= batch_size:
@@ -123,7 +123,7 @@ def add_compressed_file_to_db(file_path: str, db_file: str, index: int, batch_si
         global discarded_rows
         discarded_rows += discarded_rows_local
 
-    logger.info(f"Thread {index} finished. Added {row_count:,} rows to the database. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%")
+    logger.info(f"Thread {index} finished. File {file_path} processed. Added {row_count:,} rows to the database. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%")
 
 
 def monitor_rows() -> None:
@@ -167,20 +167,20 @@ def insert_into_db(connection: duckdb.DuckDBPyConnection, data_batch: List[Dict[
         connection.rollback()
 
 
-def main_load_files_in_db(directory: str, db_file: str) -> None:
+def main_load_files_in_db() -> None:
     """Main function to load Reddit data into a DuckDB database."""
     global stop_monitor
 
-    setup_database_create_table(db_file)
+    setup_database_create_table(config.REDDIT_DB_FILE)
 
     threads = []
     count = 0 
-    for file_name in os.listdir(directory):
+    for file_name in os.listdir(config.REDDIT_DATA_DIR):
         if file_name.endswith('.zst'):
-            file_path = os.path.join(directory, file_name)
+            file_path = os.path.join(config.REDDIT_DATA_DIR, file_name)
 
             # batches of 20k rows seems a good trade-off between writing speed and and overhead due to the commit operation
-            thread = threading.Thread(target=add_compressed_file_to_db, args=(file_path, db_file, count, 20000)) 
+            thread = threading.Thread(target=add_compressed_file_to_db, args=(file_path, config.REDDIT_DB_FILE, count, 20000)) 
             threads.append(thread)
             thread.start()
             count += 1
@@ -193,10 +193,10 @@ def main_load_files_in_db(directory: str, db_file: str) -> None:
 
     stop_monitor = True
     monitor_thread.join()
-    logger.info(f"Final total rows written: {row_count} rows. Discarded {discarded_rows} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%")
+    logger.info(f"Final total rows written: {row_count:,} rows. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%")
 
 
 
 if __name__ == '__main__':
     # just for testing
-    main_load_files_in_db(config.REDDIT_DATA_DIR, config.REDDIT_DB_FILE)
+    main_load_files_in_db()

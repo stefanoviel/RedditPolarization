@@ -19,27 +19,54 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import threading
 import time
 import duckdb
+from langdetect import detect
 
 # Global counter and lock for thread-safe operations
 row_count = 0
+discarded_rows = 0
 row_count_lock = threading.Lock()
 stop_monitor = False
- 
-def filter_submissions_by_content_length(line_json: Dict[str, Any], min_num_characters: int = 20) -> Optional[Dict[str, Any]]:
-    """Filter out submissions with less than min_num_characters in the title and selftext."""
 
-    if len(line_json.get('title', '') + line_json.get('selftext', '')) > min_num_characters:
-        desired_attributes = {'subreddit', 'score', 'author', 'created_utc', 'title', 'id', 'num_comments', 'upvote_ratio', 'selftext'}
-        return {key: line_json[key] for key in desired_attributes if key in line_json}
-    return None
+def filter_submissions_by_content_length(line_json: Dict[str, Any], min_num_characters: int = 20, min_interactions: int = 10) -> Optional[Dict[str, Any]]:
+    """Filter out submissions with less than min_num_characters in the title and selftext, 
+    ensuring they're in English, and have a minimum number of interactions."""
+
+    # if there is media don't include self text in the embedding as it will be an URL
+    if line_json.get('media', None) is not None:
+        selftext = ''
+    else:
+        selftext = line_json.get('selftext', '')
+
+    combined_text = line_json.get('title', '') + selftext
+    if len(combined_text) <= min_num_characters:
+        return None
+    
+    # # Language detection to filter only English posts PROBLEM: it is too slow
+    # try:
+    #     if detect(combined_text) != 'en':
+    #         return None
+    # except:
+    #     return None  
+
+    score = line_json.get('score', 0)
+    if score  < min_interactions:
+        return None
+
+    # Select desired attributes
+    desired_attributes = {'subreddit', 'score', 'author', 'created_utc', 'title', 'id', 'num_comments', 'upvote_ratio', 'selftext'}
+    filtered_post = {key: line_json[key] for key in desired_attributes if key in line_json}
+    filtered_post['selftext'] = selftext  # Update selftext based on media presence
+    
+    return filtered_post
+ 
 
 
 def setup_database_create_table(db_file: str) -> None:
-    """Set up the database schema for storing Reddit submissions."""
+    """Set up the database schema for storing Reddit posts."""
 
     conn = duckdb.connect(db_file)
-    conn.execute("DROP TABLE IF EXISTS submissions")
-    conn.execute("""CREATE TABLE IF NOT EXISTS submissions (
+    conn.execute(f"DROP TABLE IF EXISTS {config.TABLE_NAME}")
+    conn.execute(f"""CREATE TABLE IF NOT EXISTS {config.TABLE_NAME} (
         subreddit TEXT,
         score INTEGER,
         author TEXT,
@@ -58,8 +85,8 @@ def add_compressed_file_to_db(file_path: str, db_file: str, index: int, batch_si
 
     logger.info(f"Thread {index} started")
     local_conn = duckdb.connect(db_file).cursor()  # Create a DuckDB cursor for the thread
+    discarded_rows_local = 0
     rows_buffer = [] 
-
     with open(file_path, 'rb') as file_handle:
         # max_window_size is set to 2 GB otherwise the default 128 MB is too small for some files
         reader = zstd.ZstdDecompressor(max_window_size=2147483648).stream_reader(file_handle)
@@ -71,6 +98,7 @@ def add_compressed_file_to_db(file_path: str, db_file: str, index: int, batch_si
             for line in data:
                 try:
                     line_json = json.loads(line)
+                    # print(json.dumps(line_json, indent=4))
                     filtered_rows = filter_submissions_by_content_length(line_json)
                     if filtered_rows:
                         rows_buffer.append(filtered_rows)
@@ -80,14 +108,22 @@ def add_compressed_file_to_db(file_path: str, db_file: str, index: int, batch_si
                             with row_count_lock: # Keep track of the total number of rows written
                                 global row_count
                                 row_count += batch_size 
+                    else:
+                        discarded_rows_local += 1
+
+
                 except json.JSONDecodeError:
                     continue
 
     # Insert any remaining rows in the buffer after loop ends
     if rows_buffer:
         insert_into_db(local_conn, rows_buffer)
+    
+    with row_count_lock:
+        global discarded_rows
+        discarded_rows += discarded_rows_local
 
-    logger.info(f"Thread {index} finished")
+    logger.info(f"Thread {index} finished. Added {row_count:,} rows to the database. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%")
 
 
 def monitor_rows() -> None:
@@ -107,7 +143,7 @@ def insert_into_db(connection: duckdb.DuckDBPyConnection, data_batch: List[Dict[
     expected_keys = {'subreddit', 'score', 'author', 'created_utc', 'title', 'id', 'num_comments', 'selftext'}
     columns = ', '.join(data_batch[0].keys())
     placeholders = ', '.join(['?'] * len(data_batch[0]))
-    query = f"INSERT INTO submissions ({columns}) VALUES ({placeholders})"
+    query = f"INSERT INTO {config.TABLE_NAME} ({columns}) VALUES ({placeholders})"
 
     valid_data_batch = []
 
@@ -131,7 +167,7 @@ def insert_into_db(connection: duckdb.DuckDBPyConnection, data_batch: List[Dict[
         connection.rollback()
 
 
-def main(directory: str, db_file: str) -> None:
+def main_load_files_in_db(directory: str, db_file: str) -> None:
     """Main function to load Reddit data into a DuckDB database."""
     global stop_monitor
 
@@ -142,7 +178,9 @@ def main(directory: str, db_file: str) -> None:
     for file_name in os.listdir(directory):
         if file_name.endswith('.zst'):
             file_path = os.path.join(directory, file_name)
-            thread = threading.Thread(target=add_compressed_file_to_db, args=(file_path, db_file, count, 20000))
+
+            # batches of 20k rows seems a good trade-off between writing speed and and overhead due to the commit operation
+            thread = threading.Thread(target=add_compressed_file_to_db, args=(file_path, db_file, count, 20000)) 
             threads.append(thread)
             thread.start()
             count += 1
@@ -155,12 +193,10 @@ def main(directory: str, db_file: str) -> None:
 
     stop_monitor = True
     monitor_thread.join()
-    logger.info(f"Final total rows written: {row_count}")
+    logger.info(f"Final total rows written: {row_count} rows. Discarded {discarded_rows} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%")
 
 
 
 if __name__ == '__main__':
-
-    logger.info("Loading data to DuckDB")
-    main(config.REDDIT_DATA_DIR, config.REDDIT_DB_FILE)
-    logger.info("Data loaded successfully")
+    # just for testing
+    main_load_files_in_db(config.REDDIT_DATA_DIR, config.REDDIT_DB_FILE)

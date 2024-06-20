@@ -2,3 +2,4 @@ data/*
 output/*
 *.db
 __pycache__/
+*.h5

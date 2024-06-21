@@ -15,7 +15,7 @@ import torch
 from sentence_transformers import SentenceTransformer
 import duckdb
 import h5py
-from src.utils import run_function_with_overrides
+from run_single_step import run_function_with_overrides
 
 
 def initialize_model(model_name:str) -> SentenceTransformer:

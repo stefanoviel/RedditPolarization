@@ -4,6 +4,10 @@ import sys
 # adding root directory to paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import config
+from logging_config import configure_get_logger
+if not os.path.exists(config.OUTPUT_DIR):
+    os.makedirs(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR)
 
 import argparse
 import inspect
@@ -30,6 +34,12 @@ def run_function_with_overrides(func: callable, config: object):
     default_params = {param: getattr(config, param) for param in parameters}
     cmd_args = parse_cmd_args(parameters)
     final_params = override_params_with_cmd_args(default_params, cmd_args)
+
+    # log values of parameters
+    logger.info(f"Running {func.__name__} with parameters:")
+    for key, value in final_params.items():
+        logger.info(f"{key}: {value}")
+
     func(**final_params)
 
 

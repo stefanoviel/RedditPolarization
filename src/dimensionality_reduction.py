@@ -5,11 +5,12 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from logging_config import configure_get_logger
 import config
+from run_single_step import run_function_with_overrides
 
 if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
 logger = configure_get_logger(config.OUTPUT_DIR)
-os.environ["NUMEXPR_MAX_THREADS"] = "32"
+
 
 import h5py
 from tqdm import tqdm
@@ -63,6 +64,7 @@ def UMAP_transform_partial_fit(
     """
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
+    
     features = load_embeddings(EMBEDDINGS_FILE)
 
     subset_size = int(features.shape[0] * PARTIAL_FIT_SAMPLE_SIZE)
@@ -92,12 +94,4 @@ def UMAP_transform_partial_fit(
 
 if __name__ == "__main__":
 
-    UMAP_transform_partial_fit(
-        config.EMBEDDINGS_FILE,
-        config.UMAP_N_Neighbors,
-        config.UMAP_COMPONENTS,
-        config.UMAP_MINDIST,
-        config.PARTIAL_FIT_SAMPLE_SIZE,
-        config.DIMENSIONALITY_REDUCTION_FILE,
-    )
-    logger.info("UMAP coordinates saved.")
+    run_function_with_overrides(UMAP_transform_partial_fit, config)

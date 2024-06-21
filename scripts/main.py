@@ -12,9 +12,10 @@ from src.dimensionality_reduction import UMAP_transform_partial_fit
 
 
 def main():
-    if not os.path.exists(config.OUTPUT_PATH):
-        os.makedirs(config.OUTPUT_PATH)
-    logger = configure_get_logger(config.OUTPUT_PATH)
+    if not os.path.exists(config.OUTPUT_DIR):
+        os.makedirs(config.OUTPUT_DIR)
+        
+    logger = configure_get_logger(config.OUTPUT_DIR)
 
     main_load_files_in_db(
         config.REDDIT_DATA_DIR,

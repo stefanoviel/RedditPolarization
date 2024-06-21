@@ -6,9 +6,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from logging_config import configure_get_logger
 import config
 
-if not os.path.exists(config.OUTPUT_PATH):
-    os.makedirs(config.OUTPUT_PATH)
-logger = configure_get_logger(config.OUTPUT_PATH)
+if not os.path.exists(config.OUTPUT_DIR):
+    os.makedirs(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR)
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 
 import h5py
@@ -53,23 +53,25 @@ def save_umap_coordinates(coordinates, output_filename):
 
 
 def UMAP_transform_partial_fit(
-    embedding_filename,
-    n_neighbors,
-    n_components,
-    min_dist,
-    sample_size,
-    output_filename,
+    EMBEDDINGS_FILE,
+    UMAP_N_Neighbors,
+    UMAP_COMPONENTS,
+    UMAP_MINDIST,
+    PARTIAL_FIT_SAMPLE_SIZE,
+    DIMENSIONALITY_REDUCTION_FILE,
 ):
     """
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
-    features = load_embeddings(embedding_filename)
+    features = load_embeddings(EMBEDDINGS_FILE)
 
-    subset_size = int(features.shape[0] * sample_size)
+    subset_size = int(features.shape[0] * PARTIAL_FIT_SAMPLE_SIZE)
     np.random.shuffle(features)
 
     local_model = UMAP(
-        n_neighbors=n_neighbors, n_components=n_components, min_dist=min_dist
+        n_neighbors=UMAP_N_Neighbors,
+        n_components=UMAP_COMPONENTS,
+        min_dist=UMAP_MINDIST,
     )
 
     sampled_features = features[:subset_size]
@@ -85,7 +87,7 @@ def UMAP_transform_partial_fit(
         else:
             result = np.concatenate((result, transformed_chunk), axis=0)
 
-    save_umap_coordinates(result, output_filename)
+    save_umap_coordinates(result, DIMENSIONALITY_REDUCTION_FILE)
 
 
 if __name__ == "__main__":

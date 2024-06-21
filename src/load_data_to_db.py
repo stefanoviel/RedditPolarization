@@ -6,9 +6,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from logging_config import configure_get_logger
 import config
 
-if not os.path.exists(config.OUTPUT_PATH):
-    os.makedirs(config.OUTPUT_PATH)
-logger = configure_get_logger(config.OUTPUT_PATH)
+if not os.path.exists(config.OUTPUT_DIR):
+    os.makedirs(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR)
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
@@ -216,23 +216,23 @@ def insert_into_db(
 
 
 def main_load_files_in_db(
-    reddit_data_dir: str, db_file: str, min_post_length: int, min_score: int
+    REDDIT_DATA_DIR: str, REDDIT_DB_FILE: str, MIN_POST_LENGTH: int, MIN_SCORE: int
 ) -> None:
     """Main function to load Reddit data into a DuckDB database."""
     global stop_monitor
 
-    setup_database_create_table(reddit_data_dir)
+    setup_database_create_table(REDDIT_DB_FILE)
 
     threads = []
     count = 0
-    for file_name in os.listdir(reddit_data_dir):
+    for file_name in os.listdir(REDDIT_DATA_DIR):
         if file_name.endswith(".zst"):
-            file_path = os.path.join(reddit_data_dir, file_name)
+            file_path = os.path.join(REDDIT_DATA_DIR, file_name)
 
             # batches of 20k rows seems a good trade-off between writing speed and and overhead due to the commit operation
             thread = threading.Thread(
                 target=add_compressed_file_to_db,
-                args=(file_path, db_file, count, 20000, min_post_length, min_score),
+                args=(file_path, REDDIT_DB_FILE, count, 20000, MIN_POST_LENGTH, MIN_SCORE),
             )
             threads.append(thread)
             thread.start()

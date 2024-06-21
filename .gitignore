@@ -3,3 +3,4 @@ output/*
 *.db
 __pycache__/
 *.h5
+.venv/*

@@ -4,3 +4,4 @@ output/*
 __pycache__/
 *.h5
 .venv/*
+db_config.yaml

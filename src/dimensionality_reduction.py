@@ -5,13 +5,12 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from logging_config import configure_get_logger
 import config
-from run_single_step import run_function_with_overrides
 
 if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
 logger = configure_get_logger(config.OUTPUT_DIR)
 
-
+from src.run_single_step import run_function_with_overrides
 import h5py
 from tqdm import tqdm
 import numpy as np

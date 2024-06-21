@@ -22,6 +22,7 @@ import threading
 import time
 import duckdb
 from langdetect import detect
+from src.run_single_step import run_function_with_overrides
 
 # Global counter and lock for thread-safe operations
 row_count = 0
@@ -115,6 +116,7 @@ def add_compressed_file_to_db(
         db_file
     ).cursor()  # Create a DuckDB cursor for the thread
     discarded_rows_local = 0
+    local_row_count = 0
     rows_buffer = []
     with open(file_path, "rb") as file_handle:
         # max_window_size is set to 2 GB otherwise the default 128 MB is too small for some files
@@ -125,7 +127,12 @@ def add_compressed_file_to_db(
             chunk = reader.read(2**27)  # Read 128 MB at a time
             if not chunk:
                 break
-            data = chunk.decode("utf-8").split("\n")
+
+            try: 
+                data = chunk.decode("utf-8").split("\n")
+            except UnicodeDecodeError:
+                continue
+            
             for line in data:
                 try:
                     line_json = json.loads(line)
@@ -138,11 +145,10 @@ def add_compressed_file_to_db(
                         if len(rows_buffer) >= batch_size:
                             insert_into_db(local_conn, rows_buffer)
                             rows_buffer.clear()
-                            with (
-                                row_count_lock
-                            ):  # Keep track of the total number of rows written
+                            with (row_count_lock):  # Keep track of the total number of rows written
                                 global row_count
                                 row_count += batch_size
+                                local_row_count += batch_size
                     else:
                         discarded_rows_local += 1
 
@@ -158,7 +164,7 @@ def add_compressed_file_to_db(
         discarded_rows += discarded_rows_local
 
     logger.info(
-        f"Thread {index} finished. File {file_path} processed. Added {row_count:,} rows to the database. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%"
+        f"Thread {index} finished. File {file_path} processed. Added {local_row_count:,} rows to the database. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (local_row_count + discarded_rows) * 100:.2f}%"
     )
 
 
@@ -208,8 +214,7 @@ def insert_into_db(
             connection.begin()
             connection.executemany(query, values)
             connection.commit()
-        else:
-            logger.warning("No valid data to insert.")
+
     except Exception as e:
         logger.warning(f"Error during database insert operation: {e}")
         connection.rollback()
@@ -253,9 +258,4 @@ def main_load_files_in_db(
 
 if __name__ == "__main__":
     # just for testing
-    main_load_files_in_db(
-        config.REDDIT_DATA_DIR,
-        config.REDDIT_DB_FILE,
-        config.MIN_POST_LENGTH,
-        config.MIN_SCORE,
-    )
+    run_function_with_overrides(main_load_files_in_db, config)

@@ -8,7 +8,7 @@ import config
 
 if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
-logger = configure_get_logger(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR, executed_file_name = __file__)
 
 
 import torch

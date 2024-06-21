@@ -47,9 +47,9 @@ def setup_logging(log_file: str = 'app.log', log_level: str = 'DEBUG') -> None:
 
 
 
-def configure_get_logger(output_dir: str, log_level: str = 'DEBUG'):
+def configure_get_logger(output_dir: str, log_level: str = 'DEBUG', executed_file_name: str = __file__) -> logging.Logger:
     """Get the logger named as the current file"""
     log_file = os.path.join(output_dir, "app.log")
     print(log_file)
     setup_logging(log_file, log_level)
-    return logging.getLogger(__name__)
+    return logging.getLogger(executed_file_name)

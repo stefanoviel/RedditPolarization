@@ -8,21 +8,21 @@ import config
 
 if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
-logger = configure_get_logger(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR, executed_file_name = __file__)
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
 from typing import Dict, Any, Optional, List
 import json
-import duckdb
 from tqdm import tqdm
 import zstandard as zstd
 from concurrent.futures import ProcessPoolExecutor, as_completed
 import threading
 import time
-import duckdb
 from langdetect import detect
 from src.run_single_step import run_function_with_overrides
+import psycopg2
+from psycopg2.extras import execute_values
 
 # Global counter and lock for thread-safe operations
 row_count = 0
@@ -80,41 +80,42 @@ def filter_submissions_by_content_length(
     return filtered_post
 
 
-def setup_database_create_table(db_file: str) -> None:
+def setup_database_create_table(db_config: Dict[str, str], table_name) -> None:
     """Set up the database schema for storing Reddit posts."""
 
-    conn = duckdb.connect(db_file)
-    conn.execute(f"DROP TABLE IF EXISTS {config.TABLE_NAME}")
-    conn.execute(
-        f"""CREATE TABLE IF NOT EXISTS {config.TABLE_NAME} (
-        subreddit TEXT,
-        score INTEGER,
-        author TEXT,
-        created_utc INTEGER,
-        title TEXT,
-        id TEXT PRIMARY KEY,
-        num_comments INTEGER,
-        upvote_ratio REAL,
-        selftext TEXT
-    )"""
-    )
+    conn = psycopg2.connect(**db_config)
+    with conn.cursor() as cursor:
+        cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
+        cursor.execute(
+            f"""CREATE TABLE IF NOT EXISTS {table_name} (
+            subreddit TEXT,
+            score INTEGER,
+            author TEXT,
+            created_utc INTEGER,
+            title TEXT,
+            id TEXT PRIMARY KEY,
+            num_comments INTEGER,
+            upvote_ratio REAL,
+            selftext TEXT
+        )"""
+        )
+    conn.commit()
     conn.close()
 
 
 def add_compressed_file_to_db(
     file_path: str,
-    db_file: str,
+    db_config: dict,
     index: int,
     batch_size: int,
     min_post_length: int,
     min_score: int,
+    table_name: str,
 ) -> None:
-    """Read a zstd-compressed file and insert relevant data into a DuckDB database."""
+    """Read a zstd-compressed file and insert relevant data into a  database."""
 
     logger.info(f"Thread {index} started")
-    local_conn = duckdb.connect(
-        db_file
-    ).cursor()  # Create a DuckDB cursor for the thread
+    local_conn = psycopg2.connect(**db_config) # Create a  cursor for the thread
     discarded_rows_local = 0
     local_row_count = 0
     rows_buffer = []
@@ -143,7 +144,7 @@ def add_compressed_file_to_db(
                     if filtered_rows:
                         rows_buffer.append(filtered_rows)
                         if len(rows_buffer) >= batch_size:
-                            insert_into_db(local_conn, rows_buffer)
+                            insert_into_db(local_conn, rows_buffer, table_name)
                             rows_buffer.clear()
                             with (row_count_lock):  # Keep track of the total number of rows written
                                 global row_count
@@ -157,7 +158,7 @@ def add_compressed_file_to_db(
 
     # Insert any remaining rows in the buffer after loop ends
     if rows_buffer:
-        insert_into_db(local_conn, rows_buffer)
+        insert_into_db(local_conn, rows_buffer, table_name)
 
     with row_count_lock:
         global discarded_rows
@@ -177,56 +178,69 @@ def monitor_rows() -> None:
         time.sleep(1)  # Update every second
 
 
-def insert_into_db(
-    connection: duckdb.DuckDBPyConnection, data_batch: List[Dict[str, Any]]
-) -> None:
-    """Insert a batch of data into the database."""
-
+def insert_into_db(conn, data_batch: List[Dict[str, Any]], table_name:str) -> None:
+    """
+    Inserts data into a PostgreSQL database from a list of dictionaries.
+    Each dictionary represents a row to be inserted, with the keys as column names.
+    
+    :param conn: psycopg2 connection object to the database
+    :param data_batch: list of dictionaries, where each dictionary represents data for one row
+    """
+    # Check if data_batch is empty
     if not data_batch:
+        print("No data to insert.")
         return
+    
+    expected_keys = {"subreddit", "score", "author", "created_utc", "title", "id", "num_comments", "selftext"}
 
-    expected_keys = {
-        "subreddit",
-        "score",
-        "author",
-        "created_utc",
-        "title",
-        "id",
-        "num_comments",
-        "selftext",
-    }
-    columns = ", ".join(data_batch[0].keys())
-    placeholders = ", ".join(["?"] * len(data_batch[0]))
-    query = f"INSERT INTO {config.TABLE_NAME} ({columns}) VALUES ({placeholders})"
+    # Extracting all column names from the first dictionary assuming all dictionaries have the same keys
+    columns = data_batch[0].keys()
+    column_names = ", ".join(columns)
+    value_placeholders = ", ".join(["%s"] * len(columns))
 
-    valid_data_batch = []
+    # Preparing the INSERT INTO statement
 
-    # Filter out rows with missing or None values
-    for row in data_batch:
-        if set(row.keys()) == expected_keys and None not in row.values():
-            valid_data_batch.append(row)
+    sql = f"INSERT INTO {table_name} ({column_names}) VALUES ({value_placeholders})"
 
-    # Prepare values for insertion
-    values = [tuple(row[key] for key in expected_keys) for row in valid_data_batch]
+    # Prepare the list of tuples for the executemany() function
+    values_to_insert = []
+    for data in data_batch:
+        if set(data.keys()) == expected_keys:
+            values_to_insert.append(tuple(data[col] for col in columns))
 
+    # Create a cursor and execute the insertion
+    cursor = conn.cursor()
     try:
-        if values:
-            connection.begin()
-            connection.executemany(query, values)
-            connection.commit()
+        cursor.executemany(sql, values_to_insert)
+        conn.commit()
+
+        cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+        row_count = cursor.fetchone()[0]
+        print(f"Total number of rows in submissions: {row_count}")
 
     except Exception as e:
-        logger.warning(f"Error during database insert operation: {e}")
-        connection.rollback()
+        conn.rollback()
+        print(f"An error occurred: {e}")
+    finally:
+        cursor.close()
+
 
 
 def main_load_files_in_db(
-    REDDIT_DATA_DIR: str, REDDIT_DB_FILE: str, MIN_POST_LENGTH: int, MIN_SCORE: int
+    REDDIT_DATA_DIR: str, TABLE_NAME: str, MIN_POST_LENGTH: int, MIN_SCORE: int
 ) -> None:
-    """Main function to load Reddit data into a DuckDB database."""
+    """Main function to load Reddit data into a database."""
+    
+    db_config = {
+        'dbname': 'reddit_db',
+        'user': 'stefanoviel',
+        'password': 'pass',
+        'host': 'localhost'
+    }
+
     global stop_monitor
 
-    setup_database_create_table(REDDIT_DB_FILE)
+    setup_database_create_table(db_config, TABLE_NAME)
 
     threads = []
     count = 0
@@ -237,7 +251,7 @@ def main_load_files_in_db(
             # batches of 20k rows seems a good trade-off between writing speed and and overhead due to the commit operation
             thread = threading.Thread(
                 target=add_compressed_file_to_db,
-                args=(file_path, REDDIT_DB_FILE, count, 20000, MIN_POST_LENGTH, MIN_SCORE),
+                args=(file_path, db_config, count, 20000, MIN_POST_LENGTH, MIN_SCORE, TABLE_NAME),
             )
             threads.append(thread)
             thread.start()
@@ -257,5 +271,5 @@ def main_load_files_in_db(
 
 
 if __name__ == "__main__":
-    # just for testing
+    # just for testing    
     run_function_with_overrides(main_load_files_in_db, config)

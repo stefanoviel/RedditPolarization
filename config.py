@@ -4,12 +4,9 @@ import time
 OUTPUT_DIR = "/media/data/stviel/RedditPolarization/output/testing_pipeline"  # where the experiment outputs will be saved
 
 # where to get the data from
-REDDIT_DATA_DIR = 'data'
+REDDIT_DATA_DIR = 'data/small_data'
 
 # Database configuration and parameters for filtering
-REDDIT_DB_FILE = os.path.join(OUTPUT_DIR, "dbs/duck_db.db")
-if not os.path.exists(os.path.join(OUTPUT_DIR, "dbs")):
-    os.mkdir(os.path.join(OUTPUT_DIR, "dbs"))
 TABLE_NAME = 'submissions'
 MIN_SCORE = 10
 MIN_POST_LENGTH = 20

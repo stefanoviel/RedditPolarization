@@ -17,22 +17,29 @@ import json
 from tqdm import tqdm
 import zstandard as zstd
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import threading
+import multiprocessing
 import time
 from langdetect import detect
 from src.run_single_step import run_function_with_overrides
 import psycopg2
+import yaml
 from psycopg2.extras import execute_values
 
-# Global counter and lock for thread-safe operations
-row_count = 0
-discarded_rows = 0
-row_count_lock = threading.Lock()
-stop_monitor = False
 
+def load_config():
+    with open('db_config.yaml', 'r') as file:
+        return yaml.safe_load(file)
+
+def create_database_connection() -> psycopg2.extensions.connection:
+    """Create and return a database connection using the provided configuration."""
+
+    config = load_config()
+    db_config = config['db']
+
+    return psycopg2.connect(**db_config)
 
 def filter_submissions_by_content_length(
-    line_json: Dict[str, Any], min_num_characters: int = 20, min_score: int = 10
+    line_json: Dict[str, Any], attributes_to_extract: set, min_num_characters: int = 20, min_score: int = 10
 ) -> Optional[Dict[str, Any]]:
     """Filter out submissions with less than min_num_characters in the title and selftext,
     ensuring they're in English, and have a minimum number of interactions."""
@@ -44,46 +51,22 @@ def filter_submissions_by_content_length(
         selftext = line_json.get("selftext", "")
 
     combined_text = line_json.get("title", "") + selftext
-    if len(combined_text) <= min_num_characters:
-        return None
-
     score = line_json.get("score", 0)
-    if (
-        -min_score < score < min_score
-    ):  # a comment is relevant if it obtained a very positive or very negative response
+    if len(combined_text) <= min_num_characters or  -min_score < score < min_score:
         return None
 
-    # Language detection to filter only English posts PROBLEM: it is too slow
-    # try:
-    #     if detect(combined_text) != 'en':
-    #         return None
-    # except:
-    #     return None
-
-    # Select desired attributes
-    desired_attributes = {
-        "subreddit",
-        "score",
-        "author",
-        "created_utc",
-        "title",
-        "id",
-        "num_comments",
-        "upvote_ratio",
-        "selftext",
-    }
     filtered_post = {
-        key: line_json[key] for key in desired_attributes if key in line_json
+        key: line_json[key] for key in attributes_to_extract if key in line_json
     }
     filtered_post["selftext"] = selftext  # Update selftext based on media presence
 
     return filtered_post
 
 
-def setup_database_create_table(db_config: Dict[str, str], table_name) -> None:
+def setup_database_create_table(table_name) -> None:
     """Set up the database schema for storing Reddit posts."""
 
-    conn = psycopg2.connect(**db_config)
+    conn = create_database_connection()
     with conn.cursor() as cursor:
         cursor.execute(f"DROP TABLE IF EXISTS {table_name}")
         cursor.execute(
@@ -95,7 +78,6 @@ def setup_database_create_table(db_config: Dict[str, str], table_name) -> None:
             title TEXT,
             id TEXT PRIMARY KEY,
             num_comments INTEGER,
-            upvote_ratio REAL,
             selftext TEXT
         )"""
         )
@@ -105,19 +87,19 @@ def setup_database_create_table(db_config: Dict[str, str], table_name) -> None:
 
 def add_compressed_file_to_db(
     file_path: str,
-    db_config: dict,
     index: int,
     batch_size: int,
     min_post_length: int,
     min_score: int,
     table_name: str,
+    attributes_to_extract: set
 ) -> None:
     """Read a zstd-compressed file and insert relevant data into a  database."""
 
-    logger.info(f"Thread {index} started")
-    local_conn = psycopg2.connect(**db_config) # Create a  cursor for the thread
-    discarded_rows_local = 0
-    local_row_count = 0
+    logger.info(f"Process {index} started")
+    local_conn = create_database_connection() # Create a  cursor for the thread
+    discarded_rows = 0
+    row_count = 0
     rows_buffer = []
     with open(file_path, "rb") as file_handle:
         # max_window_size is set to 2 GB otherwise the default 128 MB is too small for some files
@@ -139,46 +121,34 @@ def add_compressed_file_to_db(
                     line_json = json.loads(line)
                     # print(json.dumps(line_json, indent=4))
                     filtered_rows = filter_submissions_by_content_length(
-                        line_json, min_post_length, min_score
+                        line_json, attributes_to_extract, min_post_length, min_score
                     )
                     if filtered_rows:
                         rows_buffer.append(filtered_rows)
                         if len(rows_buffer) >= batch_size:
-                            insert_into_db(local_conn, rows_buffer, table_name)
+                            inserted_rows = insert_into_db(local_conn, rows_buffer, table_name, attributes_to_extract)
+                            row_count += len(inserted_rows)
                             rows_buffer.clear()
-                            with (row_count_lock):  # Keep track of the total number of rows written
-                                global row_count
-                                row_count += batch_size
-                                local_row_count += batch_size
                     else:
-                        discarded_rows_local += 1
+                        discarded_rows += 1
 
                 except json.JSONDecodeError:
                     continue
 
     # Insert any remaining rows in the buffer after loop ends
     if rows_buffer:
-        insert_into_db(local_conn, rows_buffer, table_name)
+        inserted_rows = insert_into_db(local_conn, rows_buffer, table_name, attributes_to_extract)
+        row_count += len(inserted_rows)
 
-    with row_count_lock:
-        global discarded_rows
-        discarded_rows += discarded_rows_local
 
     logger.info(
-        f"Thread {index} finished. File {file_path} processed. Added {local_row_count:,} rows to the database. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (local_row_count + discarded_rows) * 100:.2f}%"
+        f"Process {index} finished. File {file_path} processed. Added {row_count:,} rows to the database. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%"
     )
 
 
-def monitor_rows() -> None:
-    """Monitor the total number of rows written to the database."""
-    global stop_monitor
-    while not stop_monitor:
-        with row_count_lock:
-            print(f"Total rows written: {row_count:,}", end="\r")
-        time.sleep(1)  # Update every second
 
 
-def insert_into_db(conn, data_batch: List[Dict[str, Any]], table_name:str) -> None:
+def insert_into_db(conn, data_batch: List[Dict[str, Any]], table_name:str, attributes_to_extract:set) -> None:
     """
     Inserts data into a PostgreSQL database from a list of dictionaries.
     Each dictionary represents a row to be inserted, with the keys as column names.
@@ -190,8 +160,6 @@ def insert_into_db(conn, data_batch: List[Dict[str, Any]], table_name:str) -> No
     if not data_batch:
         print("No data to insert.")
         return
-    
-    expected_keys = {"subreddit", "score", "author", "created_utc", "title", "id", "num_comments", "selftext"}
 
     # Extracting all column names from the first dictionary assuming all dictionaries have the same keys
     columns = data_batch[0].keys()
@@ -205,7 +173,7 @@ def insert_into_db(conn, data_batch: List[Dict[str, Any]], table_name:str) -> No
     # Prepare the list of tuples for the executemany() function
     values_to_insert = []
     for data in data_batch:
-        if set(data.keys()) == expected_keys:
+        if set(data.keys()) == attributes_to_extract:
             values_to_insert.append(tuple(data[col] for col in columns))
 
     # Create a cursor and execute the insertion
@@ -216,7 +184,6 @@ def insert_into_db(conn, data_batch: List[Dict[str, Any]], table_name:str) -> No
 
         cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
         row_count = cursor.fetchone()[0]
-        print(f"Total number of rows in submissions: {row_count}")
 
     except Exception as e:
         conn.rollback()
@@ -224,50 +191,36 @@ def insert_into_db(conn, data_batch: List[Dict[str, Any]], table_name:str) -> No
     finally:
         cursor.close()
 
+    return values_to_insert
+
+
 
 
 def main_load_files_in_db(
-    REDDIT_DATA_DIR: str, TABLE_NAME: str, MIN_POST_LENGTH: int, MIN_SCORE: int
+    REDDIT_DATA_DIR: str, TABLE_NAME: str, ATTRIBUTE_TO_EXTRACT: set, MIN_POST_LENGTH: int, MIN_SCORE: int
 ) -> None:
     """Main function to load Reddit data into a database."""
-    
-    db_config = {
-        'dbname': 'reddit_db',
-        'user': 'stefanoviel',
-        'password': 'pass',
-        'host': 'localhost'
-    }
-
     global stop_monitor
 
-    setup_database_create_table(db_config, TABLE_NAME)
+    setup_database_create_table(TABLE_NAME)
 
-    threads = []
+    processes = []
     count = 0
     for file_name in os.listdir(REDDIT_DATA_DIR):
         if file_name.endswith(".zst"):
             file_path = os.path.join(REDDIT_DATA_DIR, file_name)
 
             # batches of 20k rows seems a good trade-off between writing speed and and overhead due to the commit operation
-            thread = threading.Thread(
+            process = multiprocessing.Process(
                 target=add_compressed_file_to_db,
-                args=(file_path, db_config, count, 20000, MIN_POST_LENGTH, MIN_SCORE, TABLE_NAME),
+                args=(file_path, count, 20000, MIN_POST_LENGTH, MIN_SCORE, TABLE_NAME, ATTRIBUTE_TO_EXTRACT),
             )
-            threads.append(thread)
-            thread.start()
+            processes.append(process)
+            process.start()
             count += 1
 
-    monitor_thread = threading.Thread(target=monitor_rows)
-    monitor_thread.start()
-
-    for thread in threads:
-        thread.join()
-
-    stop_monitor = True
-    monitor_thread.join()
-    logger.info(
-        f"Final total rows written: {row_count:,} rows. Discarded {discarded_rows:,} rows. Percentage discarded: {discarded_rows / (row_count + discarded_rows) * 100:.2f}%"
-    )
+    for process in processes:
+        process.join()
 
 
 if __name__ == "__main__":

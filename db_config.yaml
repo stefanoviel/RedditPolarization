@@ -1,0 +1,5 @@
+db:
+  dbname: "reddit_db"
+  user: "stefanoviel"
+  password: "pass"
+  host: "localhost"

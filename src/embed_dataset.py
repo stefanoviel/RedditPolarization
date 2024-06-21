@@ -14,9 +14,23 @@ logger = configure_get_logger(config.OUTPUT_DIR, executed_file_name = __file__)
 import torch
 from sentence_transformers import SentenceTransformer
 import duckdb
+import psycopg2
 import h5py
+import yaml
 from src.run_single_step import run_function_with_overrides
 
+
+def load_config():
+    with open('db_config.yaml', 'r') as file:
+        return yaml.safe_load(file)
+
+def create_database_connection() -> psycopg2.extensions.connection:
+    """Create and return a database connection using the provided configuration."""
+
+    config = load_config()
+    db_config = config['db']
+
+    return psycopg2.connect(**db_config)
 
 def initialize_model(model_name:str) -> SentenceTransformer:
     """
@@ -29,15 +43,19 @@ def initialize_model(model_name:str) -> SentenceTransformer:
     return model
 
 
-def fetch_data(database_file:str, table_name:str) -> list[tuple[str, str]]:
+def fetch_data(table_name:str) -> list[tuple[str, str]]:
     """
-    Connect to DuckDB and fetch data from the specified table.
+    Connect to the db and fetch data from the specified table.
     """
-    conn = duckdb.connect(database=database_file, read_only=True)
+    conn = create_database_connection()
+    cursor = conn.cursor()  # Create a cursor object
     query = f"SELECT title, selftext FROM {table_name};"
-    result = conn.execute(query).fetchall()
+    cursor.execute(query)
+    result = cursor.fetchall()
+
+    cursor.close()
     conn.close()
-    print("Database connection closed.")
+
     return result
 
 
@@ -70,9 +88,9 @@ def save_embeddings(embeddings:torch.Tensor, file_path:str) -> None:
 
 
 # Usage example
-def main_embed_data(MODEL_NAME:str, REDDIT_DB_FILE:str, TABLE_NAME:str, EMBEDDINGS_FILE:str) -> None:
+def main_embed_data(MODEL_NAME:str, TABLE_NAME:str, EMBEDDINGS_FILE:str) -> None:
     model = initialize_model(MODEL_NAME)
-    data = fetch_data(REDDIT_DB_FILE, TABLE_NAME)
+    data = fetch_data(TABLE_NAME)
     texts = prepare_texts(data)
     embeddings = generate_embeddings(model, texts)
     save_embeddings(embeddings, EMBEDDINGS_FILE)

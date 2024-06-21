@@ -10,6 +10,16 @@ REDDIT_DATA_DIR = 'data/small_data'
 TABLE_NAME = 'submissions'
 MIN_SCORE = 10
 MIN_POST_LENGTH = 20
+ATTRIBUTE_TO_EXTRACT = {  # changing this will require changes in load_data_to_db.py
+    "subreddit",
+    "score",
+    "author",
+    "created_utc",
+    "title",
+    "id",
+    "num_comments",
+    "selftext",
+}
 
 # Embeddings 
 EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings/embeddings.h5")

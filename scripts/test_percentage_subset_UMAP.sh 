@@ -1,0 +1,39 @@
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.1.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.1 \
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.2.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.2 \
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.3.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.3 \
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.4.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.4 \ 
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.5.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.5 \
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.6.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.6 \
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.7.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.7 \
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.8.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.8 \
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_0.9.h5 \
+    --PARTIAL_FIT_SAMPLE_SIZE 0.9 \
+
+python src/dimensionality_reduction.py \
+    --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap/subset_1.0 \
+    --PARTIAL_FIT_SAMPLE_SIZE 1.0 \

@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from logging_config import configure_get_logger
 import config
 
-from src.embed_dataset import main_embed_data
+from src.embed_dataset import process_and_save_embeddings
 from src.load_data_to_db import main_load_files_in_db
 from src.dimensionality_reduction import UMAP_transform_partial_fit
 
@@ -17,7 +17,6 @@ def main():
         
     logger = configure_get_logger(config.OUTPUT_DIR, executed_file_name = __file__ )
 
-
     main_load_files_in_db(
         config.REDDIT_DATA_DIR,
         config.TABLE_NAME,
@@ -26,10 +25,11 @@ def main():
         config.MIN_SCORE,
     )
 
-    main_embed_data(
+    process_and_save_embeddings(
         config.MODEL_NAME,
         config.TABLE_NAME,
-        config.EMBEDDINGS_FILE,
+        config.MODEL_BATCH_SIZE,
+        config.EMBEDDINGS_FILE
     )
 
     UMAP_transform_partial_fit(

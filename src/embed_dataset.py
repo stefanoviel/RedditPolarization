@@ -17,6 +17,7 @@ import duckdb
 import psycopg2
 import h5py
 import yaml
+from tqdm import tqdm
 from src.run_single_step import run_function_with_overrides
 
 
@@ -43,21 +44,6 @@ def initialize_model(model_name:str) -> SentenceTransformer:
     return model
 
 
-def fetch_data(table_name:str) -> list[tuple[str, str]]:
-    """
-    Connect to the db and fetch data from the specified table.
-    """
-    conn = create_database_connection()
-    cursor = conn.cursor()  # Create a cursor object
-    query = f"SELECT title, selftext FROM {table_name};"
-    cursor.execute(query)
-    result = cursor.fetchall()
-
-    cursor.close()
-    conn.close()
-
-    return result
-
 
 def prepare_texts(data:list[tuple[str, str]]) -> list[str]:
     """
@@ -71,31 +57,80 @@ def generate_embeddings(model:SentenceTransformer, texts:list[str]) -> torch.Ten
     Generate embeddings for the given texts using the provided model.
     """
     with torch.no_grad():
+        # I tried different batch sizes, there is no significant difference in performance
         embeddings = model.encode(
-            texts, show_progress_bar=True, convert_to_tensor=True, batch_size=1024
+            texts, show_progress_bar=False, convert_to_tensor=True, batch_size=1024, precision='float32'
         )
         embeddings = embeddings.cpu().numpy()  # Move embeddings back to CPU for storage
     return embeddings
 
 
-def save_embeddings(embeddings:torch.Tensor, file_path:str) -> None:
+def count_rows(table_name:str) -> int:
     """
-    Save embeddings to an HDF5 file.
+    Count the number of rows in the specified table.
     """
-    with h5py.File(file_path, "w") as f:
-        f.create_dataset("embeddings", data=embeddings)
-    print("Embeddings saved.")
+    conn = create_database_connection()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
+    count = cursor.fetchone()[0]
+    cursor.close()
+    conn.close()
+    return count
 
+def fetch_data_in_batches(table_name: str, batch_size: int):
+    """Fetch data from the specified table in batches."""
+    conn = create_database_connection()
+    cursor = conn.cursor(name='fetch_cursor')  # Server-side cursor
+    query = f"SELECT title, selftext FROM {table_name};"
+    cursor.execute(query)
 
-# Usage example
-def main_embed_data(MODEL_NAME:str, TABLE_NAME:str, EMBEDDINGS_FILE:str) -> None:
+    while True:
+        batch = cursor.fetchmany(batch_size)
+        if not batch:
+            break
+        yield batch
+
+    cursor.close()
+    conn.close()
+
+def process_and_save_embeddings(MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, EMBEDDINGS_FILE: str):
+    """Fetch data in batches, generate embeddings, and save them incrementally."""
     model = initialize_model(MODEL_NAME)
-    data = fetch_data(TABLE_NAME)
-    texts = prepare_texts(data)
-    embeddings = generate_embeddings(model, texts)
-    save_embeddings(embeddings, EMBEDDINGS_FILE)
+    rows_number = count_rows(TABLE_NAME)
+    
+    # Open the HDF5 file for writing
+    with h5py.File(EMBEDDINGS_FILE, "w") as f:
+        # Initialize variables to keep track of dataset dimensions
+        data_initialized = False
+        dataset = None
+        i = 0
+
+        for batch in tqdm(fetch_data_in_batches(TABLE_NAME, MODEL_BATCH_SIZE), total=rows_number // MODEL_BATCH_SIZE):
+            texts = prepare_texts(batch)
+            if texts:
+                embeddings = generate_embeddings(model, texts)
+
+                if not data_initialized:
+                    # Create dataset with initial dimensions and enable resizing
+                    num_embeddings, embedding_dim = embeddings.shape
+                    maxshape = (None, embedding_dim)  # Allow unlimited rows
+                    dataset = f.create_dataset("embeddings", shape=(0, embedding_dim), maxshape=maxshape, dtype='float32', chunks=True)
+                    data_initialized = True
+
+                # Resize the dataset to accommodate new embeddings
+                current_shape = dataset.shape
+                new_shape = (current_shape[0] + embeddings.shape[0], embedding_dim)
+                dataset.resize(new_shape)
+                
+                # Write new embeddings to the dataset
+                dataset[current_shape[0]:new_shape[0], :] = embeddings
+            
+
+        print("Embeddings saved incrementally.")
+
+
 
 
 if __name__ == "__main__":
     # just for testing
-    run_function_with_overrides(main_embed_data, config)
+    run_function_with_overrides(process_and_save_embeddings, config)

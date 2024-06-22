@@ -26,6 +26,8 @@ EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings/embeddings.h5")
 if not os.path.exists(os.path.join(OUTPUT_DIR, "embeddings")):
     os.mkdir(os.path.join(OUTPUT_DIR, "embeddings"))
 MODEL_NAME = 'all-MiniLM-L6-v2' 
+# number of samples to load on the gpu at once 
+MODEL_BATCH_SIZE = 320000  # 320k samples will fit in 10GB of GPU memory
 
 # Dimensionality reduction 
 DIMENSIONALITY_REDUCTION_FILE = os.path.join(OUTPUT_DIR, "embeddings/dimensional_reduction.h5")

@@ -10,7 +10,7 @@ if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
 logger = configure_get_logger(config.OUTPUT_DIR, executed_file_name = __file__)
 
-from src.run_single_step import run_function_with_overrides
+from utils_run_single_step import run_function_with_overrides
 import h5py
 from tqdm import tqdm
 import numpy as np

@@ -28,7 +28,8 @@ def override_params_with_cmd_args(default_params: dict, cmd_args: dict):
 
 
 def run_function_with_overrides(func: callable, config: object):
-    """Run a function with the default parameters overridden by command-line arguments."""
+    """Run a function with the default parameters. If any of the parameters are provided as command line arguments, 
+    override the default values with the provided ones. """
 
     parameters = inspect.signature(func).parameters
     default_params = {param: getattr(config, param) for param in parameters}

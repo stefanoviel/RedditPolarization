@@ -30,7 +30,7 @@ MODEL_NAME = 'all-MiniLM-L6-v2'
 MODEL_BATCH_SIZE = 320000  # 320k samples will fit in 10GB of GPU memory
 
 # Dimensionality reduction 
-DIMENSIONALITY_REDUCTION_FILE = os.path.join(OUTPUT_DIR, "embeddings/dimensional_reduction.h5")
+DIMENSIONALITY_REDUCTION_FILE = os.path.join(OUTPUT_DIR, "test/dimensional_reduction.h5")
 UMAP_COMPONENTS = 5
 UMAP_N_Neighbors = 2
 UMAP_MINDIST = 0.01

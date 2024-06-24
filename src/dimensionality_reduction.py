@@ -19,8 +19,9 @@ from cuml.manifold import UMAP
 from dask_cuda import LocalCUDACluster
 from dask.distributed import Client
 import dask.array as da
-from cuml.dask.manifold import UMAP as MNMG_UMAP
-
+# from cuml.dask.manifold import UMAP as MNMG_UMAP
+os.environ["NUMEXPR_MAX_THREADS"] = "32"
+import numexpr
 
 def load_embeddings(file_path: str) -> np.ndarray:
     """
@@ -51,6 +52,13 @@ def save_umap_coordinates(coordinates, output_filename):
     with h5py.File(output_filename, "w") as file:
         file.create_dataset("umap_coordinates", data=coordinates)
 
+def random_baseline(EMBEDDINGS_FILE, UMAP_COMPONENTS, DIMENSIONALITY_REDUCTION_FILE):
+    print("Running random baseline")
+    features = load_embeddings(EMBEDDINGS_FILE)
+    random_projection = np.random.rand(features.shape[1], UMAP_COMPONENTS)
+    save_umap_coordinates(random_projection, DIMENSIONALITY_REDUCTION_FILE)
+
+
 
 def UMAP_transform_partial_fit(
     EMBEDDINGS_FILE,
@@ -75,20 +83,18 @@ def UMAP_transform_partial_fit(
         min_dist=UMAP_MINDIST,
     )
 
-    sampled_features = features[:subset_size]
-    local_model.fit(sampled_features)
+    if PARTIAL_FIT_SAMPLE_SIZE == 1:
+        local_model.fit(features)
+        result = local_model.transform(features)
+    else:
 
-    # iterate over the rest of the data in chunks of subset_size and transform
-    result = None
-    for i in tqdm(range(subset_size, features.shape[0], subset_size)):
-        chunk = features[i : i + subset_size]
-        transformed_chunk = local_model.transform(chunk)
-        if result is None:
-            result = transformed_chunk
-        else:
-            result = np.concatenate((result, transformed_chunk), axis=0)
+        sampled_features = features[:subset_size]
+        logger.info(f"Fitting UMAP on a subset of {len(sampled_features)} samples.")
+        transformed = local_model.fit_transform(features) 
 
-    save_umap_coordinates(result, DIMENSIONALITY_REDUCTION_FILE)
+
+
+    save_umap_coordinates(transformed, DIMENSIONALITY_REDUCTION_FILE)
 
 
 if __name__ == "__main__":

@@ -83,15 +83,7 @@ def UMAP_transform_partial_fit(
         min_dist=UMAP_MINDIST,
     )
 
-    if PARTIAL_FIT_SAMPLE_SIZE == 1:
-        local_model.fit(features)
-        result = local_model.transform(features)
-    else:
-
-        sampled_features = features[:subset_size]
-        logger.info(f"Fitting UMAP on a subset of {len(sampled_features)} samples.")
-        transformed = local_model.fit_transform(features) 
-
+    local_model.fit(features)
 
 
     save_umap_coordinates(transformed, DIMENSIONALITY_REDUCTION_FILE)

@@ -54,7 +54,7 @@ def filter_submissions_by_content_length(
 
     combined_text = line_json.get("title", "") + selftext
     score = line_json.get("score", 0)
-    if len(combined_text) <= min_num_characters or  -min_score < score < min_score: # TODO: correct
+    if len(combined_text) <= min_num_characters or  (score < -min_score)  and (score > min_score): 
         return None
 
     filtered_post = {

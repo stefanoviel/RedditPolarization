@@ -18,7 +18,7 @@ import psycopg2
 import h5py
 import yaml
 from tqdm import tqdm
-from utils_run_single_step import run_function_with_overrides
+from src.utils_run_single_step import run_function_with_overrides
 
 
 def load_config():
@@ -43,13 +43,11 @@ def initialize_model(model_name:str) -> SentenceTransformer:
     model.eval()
     return model
 
-
-
 def prepare_texts(data:list[tuple[str, str]]) -> list[str]:
     """
     Prepare texts by concatenating title and selftext.
     """
-    return [title + " " + text for title, text in data if title and text]
+    return [title + " " + text for title, text in data]
 
 
 def generate_embeddings(model:SentenceTransformer, texts:list[str]) -> torch.Tensor:
@@ -105,8 +103,9 @@ def process_and_save_embeddings(MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SI
         dataset = None
         i = 0
 
-        for batch in tqdm(fetch_data_in_batches(TABLE_NAME, MODEL_BATCH_SIZE), total=rows_number // MODEL_BATCH_SIZE):
+        for batch in fetch_data_in_batches(TABLE_NAME, MODEL_BATCH_SIZE):
             texts = prepare_texts(batch)
+            print(f"batch {i} has {len(texts)} texts")
             if texts:
                 embeddings = generate_embeddings(model, texts)
 
@@ -123,10 +122,14 @@ def process_and_save_embeddings(MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SI
                 dataset.resize(new_shape)
                 
                 # Write new embeddings to the dataset
+                print("inserting from ", current_shape[0], " to ", new_shape[0], " shape: ", embeddings.shape)
                 dataset[current_shape[0]:new_shape[0], :] = embeddings
-            
 
-        print("Embeddings saved incrementally.")
+    
+
+        logger.info(f"shape of the dataset: {dataset.shape}")   
+        logger.info(f"Embeddings saved to {EMBEDDINGS_FILE}")
+
 
 
 

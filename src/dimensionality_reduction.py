@@ -10,7 +10,7 @@ if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
 logger = configure_get_logger(config.OUTPUT_DIR, executed_file_name = __file__)
 
-from utils_run_single_step import run_function_with_overrides
+from src.utils_run_single_step import run_function_with_overrides
 import h5py
 from tqdm import tqdm
 import numpy as np
@@ -60,6 +60,27 @@ def random_baseline(EMBEDDINGS_FILE, UMAP_COMPONENTS, DIMENSIONALITY_REDUCTION_F
 
 
 
+def UMAP_transform_full_fit(
+    EMBEDDINGS_FILE,
+    UMAP_N_Neighbors,
+    UMAP_COMPONENTS,
+    UMAP_MINDIST,
+    DIMENSIONALITY_REDUCTION_FILE,
+):
+    """
+    Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
+    """
+
+    features = load_embeddings(EMBEDDINGS_FILE)
+    local_model = UMAP(
+        n_neighbors=UMAP_N_Neighbors,
+        n_components=UMAP_COMPONENTS,
+        min_dist=UMAP_MINDIST,
+    )
+    transformed = local_model.fit_transform(features)
+    save_umap_coordinates(transformed, DIMENSIONALITY_REDUCTION_FILE)
+
+
 def UMAP_transform_partial_fit(
     EMBEDDINGS_FILE,
     UMAP_N_Neighbors,
@@ -74,19 +95,22 @@ def UMAP_transform_partial_fit(
     
     features = load_embeddings(EMBEDDINGS_FILE)
 
-    subset_size = int(features.shape[0] * PARTIAL_FIT_SAMPLE_SIZE)
-    np.random.shuffle(features)
-
     local_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,
         min_dist=UMAP_MINDIST,
     )
 
-    local_model.fit(features)
+    sampled_features = np.random.choice(
+        features.shape[0], int(features.shape[0] * PARTIAL_FIT_SAMPLE_SIZE), replace=False
+    )
 
+    sampled_features = features[sampled_features]
+    
+    local_model.fit(sampled_features)
+    result = local_model.transform(features)
+    save_umap_coordinates(result, DIMENSIONALITY_REDUCTION_FILE)
 
-    save_umap_coordinates(transformed, DIMENSIONALITY_REDUCTION_FILE)
 
 
 if __name__ == "__main__":

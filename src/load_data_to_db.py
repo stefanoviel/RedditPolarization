@@ -12,6 +12,7 @@ logger = configure_get_logger(config.OUTPUT_DIR, executed_file_name = __file__)
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
+import random
 from typing import Dict, Any, Optional, List
 import json
 from tqdm import tqdm
@@ -94,7 +95,8 @@ def add_compressed_file_to_db(
     min_post_length: int,
     min_score: int,
     table_name: str,
-    attributes_to_extract: set
+    attributes_to_extract: set,
+    subset_fraction: float
 ) -> None:
     """Read a zstd-compressed file and insert relevant data into a  database."""
 
@@ -119,6 +121,9 @@ def add_compressed_file_to_db(
                 continue
             
             for line in data:
+                if random.random() > subset_fraction:
+                    continue
+
                 try:
                     line_json = json.loads(line)
                     # print(json.dumps(line_json, indent=4))
@@ -197,7 +202,7 @@ def insert_into_db(conn, data_batch: List[Dict[str, Any]], table_name:str, attri
 
 
 def main_load_files_in_db(
-    REDDIT_DATA_DIR: str, TABLE_NAME: str, ATTRIBUTE_TO_EXTRACT: set, MIN_POST_LENGTH: int, MIN_SCORE: int
+    REDDIT_DATA_DIR: str, TABLE_NAME: str, ATTRIBUTE_TO_EXTRACT: set, MIN_POST_LENGTH: int, MIN_SCORE: int, SUBSET_FRACTION: float
 ) -> None:
     """Main function to load Reddit data into a database."""
     global stop_monitor
@@ -213,7 +218,7 @@ def main_load_files_in_db(
             # batches of 20k rows seems a good trade-off between writing speed and and overhead due to the commit operation
             process = multiprocessing.Process(
                 target=add_compressed_file_to_db,
-                args=(file_path, count, 20000, MIN_POST_LENGTH, MIN_SCORE, TABLE_NAME, ATTRIBUTE_TO_EXTRACT),
+                args=(file_path, count, 20000, MIN_POST_LENGTH, MIN_SCORE, TABLE_NAME, ATTRIBUTE_TO_EXTRACT, SUBSET_FRACTION),
             )
             processes.append(process)
             process.start()

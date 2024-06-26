@@ -95,17 +95,22 @@ def UMAP_transform_partial_fit(
     
     features = load_embeddings(EMBEDDINGS_FILE)
 
+    print("features loaded", features.shape)
+    print("loaded")
+
     local_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,
         min_dist=UMAP_MINDIST,
     )
 
-    sampled_features = np.random.choice(
+    sampled_indices = np.random.choice(
         features.shape[0], int(features.shape[0] * PARTIAL_FIT_SAMPLE_SIZE), replace=False
     )
+    
+    sampled_features = features[sampled_indices]
 
-    sampled_features = features[sampled_features]
+    print("sampled")
     
     local_model.fit(sampled_features)
     result = local_model.transform(features)

@@ -17,13 +17,14 @@ def main():
         
     logger = configure_get_logger(config.OUTPUT_DIR, executed_file_name = __file__ )
 
-    # main_load_files_in_db(
-    #     config.REDDIT_DATA_DIR,
-    #     config.TABLE_NAME,
-    #     config.ATTRIBUTE_TO_EXTRACT,
-    #     config.MIN_POST_LENGTH,
-    #     config.MIN_SCORE,
-    # )
+    main_load_files_in_db(
+        config.REDDIT_DATA_DIR,
+        config.TABLE_NAME,
+        config.ATTRIBUTE_TO_EXTRACT,
+        config.MIN_POST_LENGTH,
+        config.MIN_SCORE,
+        config.SUBSET_FRACTION,
+    )
 
     process_and_save_embeddings(
         config.MODEL_NAME,

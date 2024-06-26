@@ -8,7 +8,7 @@ No ripetizioni
 
 TODO:
 there is some stocasticity in the dimensionality reduction. for the final result it would probably require multiple runs. 
-
+move on the cluster to have more resources
 
 
 module load gcc/8.2.0 python/3.10.4 jupyterlab/3.5.1

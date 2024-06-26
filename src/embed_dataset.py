@@ -75,11 +75,13 @@ def count_rows(table_name:str) -> int:
     conn.close()
     return count
 
-def fetch_data_in_batches(table_name: str, batch_size: int):
+def fetch_data_in_batches(table_name: str, batch_size: int, max_posts: int = None):
     """Fetch data from the specified table in batches."""
     conn = create_database_connection()
     cursor = conn.cursor(name='fetch_cursor')  # Server-side cursor
+
     query = f"SELECT title, selftext FROM {table_name};"
+
     cursor.execute(query)
 
     while True:
@@ -101,12 +103,11 @@ def process_and_save_embeddings(MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SI
         # Initialize variables to keep track of dataset dimensions
         data_initialized = False
         dataset = None
-        i = 0
-
+        
         for batch in fetch_data_in_batches(TABLE_NAME, MODEL_BATCH_SIZE):
             texts = prepare_texts(batch)
-            print(f"batch {i} has {len(texts)} texts")
             if texts:
+                
                 embeddings = generate_embeddings(model, texts)
 
                 if not data_initialized:
@@ -125,7 +126,7 @@ def process_and_save_embeddings(MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SI
                 print("inserting from ", current_shape[0], " to ", new_shape[0], " shape: ", embeddings.shape)
                 dataset[current_shape[0]:new_shape[0], :] = embeddings
 
-    
+
 
         logger.info(f"shape of the dataset: {dataset.shape}")   
         logger.info(f"Embeddings saved to {EMBEDDINGS_FILE}")

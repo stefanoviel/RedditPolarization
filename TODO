@@ -11,6 +11,12 @@ there is some stocasticity in the dimensionality reduction. for the final result
 move on the cluster to have more resources
 
 
-module load gcc/8.2.0 python/3.10.4 jupyterlab/3.5.1
 
-think on how to evaluate the dimensionality reduction/clustering
+keep running on very small subset (stronger subsampling)
+un altro test sul dimensionality reduction
+* match clusters by maximizing the number of elements which interesect between the two
+report of memory usage in each part of pipeline
+go back to duckdb to read from parquest files
+
+
+

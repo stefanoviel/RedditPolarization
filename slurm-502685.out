@@ -1,0 +1,20 @@
+Lmod has detected the following error: The following module(s) are unknown:
+"gcc/8.2.0"
+
+Please check the spelling or version number. Also try "module spider ..."
+It is also possible your cache file is out-of-date; it may help to try:
+  $ module --ignore_cache load "gcc/8.2.0"
+
+Also make sure that all modulefiles written in TCL start with the string
+#%Module
+
+
+
+/cluster/work/coss/stviel/output/app.log
+/cluster/work/coss/stviel/output/app.log
+2024-06-27 12:33:27,890 - h5py._conv - DEBUG - Creating converter from 7 to 5
+2024-06-27 12:33:27,921 - h5py._conv - DEBUG - Creating converter from 5 to 7
+2024-06-27 12:33:27,922 - h5py._conv - DEBUG - Creating converter from 7 to 5
+2024-06-27 12:33:27,922 - h5py._conv - DEBUG - Creating converter from 5 to 7
+2024-06-27 12:33:46,407 - numba.cuda.cudadrv.driver - DEBUG - call runtime api: cudaRuntimeGetVersion
+2024-06-27 12:33:53,923 - /cluster/scratch/stviel/RedditPolarization/src/batch_test.py - INFO - WORKING

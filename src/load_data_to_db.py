@@ -82,8 +82,9 @@ def setup_database_create_table(table_name) -> None:
             id TEXT PRIMARY KEY,
             num_comments INTEGER,
             selftext TEXT
+        
         )"""
-        )
+        ) # TODO: add media
     conn.commit()
     conn.close()
 

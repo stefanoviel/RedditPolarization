@@ -95,13 +95,11 @@ def UMAP_transform_partial_fit(
     
     features = load_embeddings(EMBEDDINGS_FILE)
 
-    print("features loaded", features.shape)
-    print("loaded")
-
     local_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,
         min_dist=UMAP_MINDIST,
+        verbose=True
     )
 
     sampled_indices = np.random.choice(
@@ -109,12 +107,26 @@ def UMAP_transform_partial_fit(
     )
     
     sampled_features = features[sampled_indices]
-
-    print("sampled")
     
     local_model.fit(sampled_features)
-    result = local_model.transform(features)
+
+    subset_size = len(sampled_indices)
+
+    # iterate over the rest of the data in chunks of subset_size and transform
+    # subset size (derived from PARTIAL_FIT_SAMPLE_SIZE) should be set to be the maximum subset of data on which we can fit
+    # given a certain GPU memory
+
+    result = None
+    for i in tqdm(range(0, features.shape[0], subset_size)):
+        chunk = features[i : i + subset_size]
+        transformed_chunk = local_model.transform(chunk)
+        if result is None:
+            result = transformed_chunk
+        else:
+            result = np.concatenate((result, transformed_chunk), axis=0)
+
     save_umap_coordinates(result, DIMENSIONALITY_REDUCTION_FILE)
+
 
 
 

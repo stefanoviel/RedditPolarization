@@ -1,14 +1,18 @@
-# test embedding with different number of components
+#!/bin/bash
+#SBATCH --job-name=filtered_pipeline
+#SBATCH --nodes=1
+#SBATCH --gpus=rtx_4090:1
+#SBATCH --mem-per-cpu=70GB
+#SBATCH --time=08:00:00
 
-# python src/dimensionality_reduction.py \
-#     --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/subset_umap_2/subset_0.0001.h5 \
-#     --PARTIAL_FIT_SAMPLE_SIZE 0.0001 \
-#     --UMAP_COMPONENTS 2
+module load gcc/8.2.0 python_gpu/3.11.2 cuda/11.2.2
+
+source .venv/bin/activate
 
 for i in 2 3 4 5 6 7 8 9 10 15 20 30 50
 do
     python src/dimensionality_reduction.py \
-        --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline/diff_dimensions/components_${i}.h5 \
-        --PARTIAL_FIT_SAMPLE_SIZE 0.1 \
+        --DIMENSIONALITY_REDUCTION_FILE /cluster/work/coss/stviel/output/diff_dimensions/components_${i}.h5 \
+        --PARTIAL_FIT_SAMPLE_SIZE 0.2 \
         --UMAP_COMPONENTS ${i}
 done

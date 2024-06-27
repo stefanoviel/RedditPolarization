@@ -1,6 +1,7 @@
 import os
 import time
 import logging
+from datetime import datetime
 import logging.config
 
 def setup_logging(log_file: str = 'app.log', log_level: str = 'DEBUG') -> None:
@@ -54,6 +55,11 @@ def configure_get_logger(output_dir: str, experiment_name:str, log_level: str = 
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     log_file_name = f"{experiment_name}_{current_time}.log"
     log_file = os.path.join(output_dir, "logs", log_file_name)
+
+    if not os.path.exists(os.path.join(output_dir, "logs")):
+        os.makedirs(os.path.join(output_dir, "logs"))
+
+    print(log_file)
 
     setup_logging(log_file, log_level)
     return logging.getLogger(executed_file_name)

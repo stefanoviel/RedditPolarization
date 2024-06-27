@@ -1,8 +1,9 @@
 import os
 import time
 
-EXPERIMENT_NAME = "testing_august_0.1_subset"
-OUTPUT_DIR = os.path.join("/cluster/work/coss/stviel/output" , EXPERIMENT_NAME)
+EXPERIMENT_NAME = "testing_pipeline_1"
+# OUTPUT_DIR = os.path.join("/cluster/work/coss/stviel/output" , EXPERIMENT_NAME)
+OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
@@ -26,7 +27,7 @@ ATTRIBUTE_TO_EXTRACT = {  # changing this will require changes in load_data_to_d
 }
 
 # Embeddings 
-EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings.h5")
+EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings_10percent.h5")
 MODEL_NAME = 'all-MiniLM-L6-v2' 
 # number of samples to load on the gpu at once 
 MODEL_BATCH_SIZE = 320_000  

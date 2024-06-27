@@ -8,9 +8,10 @@ if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # where to get the data from
-REDDIT_DATA_DIR = 'data'
+REDDIT_DATA_DIR = '/cluster/work/coss/stviel/parquet_data'
 
 # Database configuration and parameters for filtering
+DB_FILEPATH = os.path.join(OUTPUT_DIR, "db.duckdb")
 TABLE_NAME = 'submissions'
 MIN_SCORE = 10
 MIN_POST_LENGTH = 20

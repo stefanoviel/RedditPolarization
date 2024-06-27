@@ -25,13 +25,11 @@ def load_config():
     with open('db_config.yaml', 'r') as file:
         return yaml.safe_load(file)
 
-def create_database_connection() -> psycopg2.extensions.connection:
+def create_database_connection(db_file_path:str):
     """Create and return a database connection using the provided configuration."""
 
-    config = load_config()
-    db_config = config['db']
-
-    return psycopg2.connect(**db_config)
+    con = duckdb.connect(database=db_file_path)
+    return con
 
 def initialize_model(model_name:str) -> SentenceTransformer:
     """
@@ -63,22 +61,20 @@ def generate_embeddings(model:SentenceTransformer, texts:list[str]) -> torch.Ten
     return embeddings
 
 
-def count_rows(table_name:str) -> int:
+def count_rows(db_file_path:str, table_name:str) -> int:
     """
     Count the number of rows in the specified table.
     """
-    conn = create_database_connection()
-    cursor = conn.cursor()
+    cursor = create_database_connection(db_file_path)
     cursor.execute(f"SELECT COUNT(*) FROM {table_name};")
     count = cursor.fetchone()[0]
     cursor.close()
     conn.close()
     return count
 
-def fetch_data_in_batches(table_name: str, batch_size: int, max_posts: int = None):
+def fetch_data_in_batches(db_file_path:str, table_name: str, batch_size: int, max_posts: int = None):
     """Fetch data from the specified table in batches."""
-    conn = create_database_connection()
-    cursor = conn.cursor(name='fetch_cursor')  # Server-side cursor
+    cursor = create_database_connection(db_file_path)
 
     query = f"SELECT title, selftext FROM {table_name};"
 
@@ -93,7 +89,7 @@ def fetch_data_in_batches(table_name: str, batch_size: int, max_posts: int = Non
     cursor.close()
     conn.close()
 
-def process_and_save_embeddings(MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, EMBEDDINGS_FILE: str):
+def process_and_save_embeddings(DB_FILEPATH:str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, EMBEDDINGS_FILE: str):
     """Fetch data in batches, generate embeddings, and save them incrementally."""
     model = initialize_model(MODEL_NAME)
     rows_number = count_rows(TABLE_NAME)

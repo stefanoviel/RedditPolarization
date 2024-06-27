@@ -11,6 +11,20 @@ logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, execute
 
 import argparse
 import inspect
+import subprocess
+import time
+
+def get_gpu_memory():
+    """Function to get the current GPU memory usage."""
+    try:
+        _output_to_list = lambda x: x.decode('ascii').split('\n')[:-1]
+        result = subprocess.run(['nvidia-smi', '--query-gpu=memory.used', '--format=csv,nounits,noheader'],
+                                stdout=subprocess.PIPE, check=True)
+        gpu_memory = int(_output_to_list(result.stdout)[0])
+        return gpu_memory
+    except Exception as e:
+        print("Failed to query GPU memory usage:", e)
+        return 0
 
 def parse_cmd_args(parameters):
     parser = argparse.ArgumentParser()
@@ -41,7 +55,14 @@ def run_function_with_overrides(func: callable, config: object):
     for key, value in final_params.items():
         logger.info(f"{key}: {value}")
 
+    start = time.time()
+    mem_before = get_gpu_memory()
     func(**final_params)
+    mem_after = get_gpu_memory()
+    end = time.time()
+
+    logger.info(f"Memory usage for {func.__name__} was {mem_after - mem_before:,} Mb")
+    logger.info(f"Time for executing {func.__name__} was {end - start:.1f} seconds")
 
 
 # Example usage

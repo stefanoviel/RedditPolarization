@@ -2,8 +2,8 @@ import os
 import time
 
 EXPERIMENT_NAME = "testing_pipeline_1"
-# OUTPUT_DIR = os.path.join("/cluster/work/coss/stviel/output" , EXPERIMENT_NAME)
-OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
+OUTPUT_DIR = os.path.join("/cluster/work/coss/stviel/output" , EXPERIMENT_NAME)
+# OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
@@ -38,3 +38,9 @@ UMAP_COMPONENTS = 5
 UMAP_N_Neighbors = 3
 UMAP_MINDIST = 0.01
 PARTIAL_FIT_SAMPLE_SIZE = 0.1
+
+
+# clustering 
+CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "clusters.h5")
+HDBS_MIN_CLUSTERSIZE= 10
+HDBS_MIN_SAMPLES = 10

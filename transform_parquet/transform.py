@@ -88,7 +88,6 @@ def _extract_line_data(line_str: str) -> Dict[str, Any]:
         'title': line_json['title'],
         'id': line_json['id'],
         'num_comments': line_json['num_comments'],
-        'upvote_ratio': line_json['upvote_ratio'],
         'selftext': line_json['selftext'],
         'media': line_json['media']
     }

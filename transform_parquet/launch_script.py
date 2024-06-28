@@ -17,7 +17,7 @@ def launch_jobs(cluster: bool = True):
         parquet_folder_path = '/Users/andrea/Desktop/PhD/Projects/Current/Reddit/data/parquet_test'
 
     file_names = extract_zst_file_names(folder_path=zst_folder_path)
-    file_names = sorted(file_names)[:-2]
+    file_names = sorted(file_names)
     print(file_names)
 
     os.system('chmod +x run_script.sh')

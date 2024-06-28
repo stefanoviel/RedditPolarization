@@ -66,10 +66,15 @@ def _count_lines_zst(file_path: str) -> int:
 
 def _get_n_files_and_n_lines_parquet(lines_zst: int) -> Tuple[int, int]:
     bytes_per_line_parquet = 170
-    desired_lines_parquet = (240 * 10**6) // bytes_per_line_parquet
+    desired_lines_parquet = (240 * 10 ** 6) // bytes_per_line_parquet
     n_files = max(1, lines_zst // desired_lines_parquet)
     remainder = lines_zst % desired_lines_parquet
-    n_lines_parquet = desired_lines_parquet + remainder // n_files
+
+    if remainder / (desired_lines_parquet * n_files) > 0.5:
+        n_files += 1
+        n_lines_parquet = desired_lines_parquet
+    else:
+        n_lines_parquet = desired_lines_parquet + remainder // n_files
     return n_lines_parquet, n_files
 
 

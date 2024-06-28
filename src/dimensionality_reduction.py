@@ -22,8 +22,8 @@ import dask.array as da
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
-from src.utils_run_single_step import run_function_with_overrides
-from src.utils import load_embeddings
+from src.utils.function_runner import run_function_with_overrides
+from src.utils.utils import load_embeddings
 
 
 def UMAP_fit_transform(embedding_filename, n_neighbors, n_components, min_dist):

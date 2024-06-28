@@ -61,7 +61,7 @@ def run_function_with_overrides(func: callable, config: object):
     mem_after = get_gpu_memory()
     end = time.time()
 
-    logger.info(f"Memory usage for {func.__name__} was {mem_after - mem_before:,} Mb")
+    logger.info(f"GPU emory usage for {func.__name__} was {mem_after - mem_before:,} Mb")
     logger.info(f"Time for executing {func.__name__} was {end - start:.1f} seconds")
 
 

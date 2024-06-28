@@ -8,7 +8,7 @@ No ripetizioni
 
 TODO:
 there is some stocasticity in the dimensionality reduction. for the final result it would probably require multiple runs. 
-move on the cluster to have more resources
+score filtering should differe every year (e.g. keep only the one with the 50% highest scores)
 
 
 
@@ -20,3 +20,6 @@ go back to duckdb to read from parquest files
 
 
 
+do we actually need a DB? 
+It make the querying of the subreddit easier later. We will only use it to find which the corresponding information of a certain embedding
+It should only contain the data we're going to embed. We don't want to copy everything. Create the parquet files with only the data you need. 

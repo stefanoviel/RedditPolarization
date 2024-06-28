@@ -2,16 +2,15 @@ import os
 import time
 
 EXPERIMENT_NAME = "testing_pipeline_1"
-OUTPUT_DIR = os.path.join("/cluster/work/coss/stviel/output" , EXPERIMENT_NAME)
+OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 # OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # where to get the data from
-REDDIT_DATA_DIR = '/cluster/work/coss/stviel/parquet_data'
+REDDIT_DATA_DIR = 'data/parquet_1'
 
 # Database configuration and parameters for filtering
-DB_FILEPATH = os.path.join(OUTPUT_DIR, "db.duckdb")
 TABLE_NAME = 'submissions'
 MIN_SCORE = 10
 MIN_POST_LENGTH = 20
@@ -28,7 +27,7 @@ ATTRIBUTE_TO_EXTRACT = {  # changing this will require changes in load_data_to_d
 }
 
 # Embeddings 
-EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings_10percent.h5")
+EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings.h5")
 MODEL_NAME = 'all-MiniLM-L6-v2' 
 # number of samples to load on the gpu at once 
 MODEL_BATCH_SIZE = 320_000  

@@ -27,7 +27,7 @@ def compute_plot_trutworthiness(original_file, original_dataset_name, reduced_fi
     for file_path in os.listdir(reduced_files_directory):
         file_path = os.path.join(reduced_files_directory, file_path)
         reduced_vectors = load_vectors(file_path, reduced_dataset_name)
-        tw = cuml.metrics.trustworthiness(original_vectors, reduced_vectors)
+        tw = cuml.metrics.trustworthiness(original_vectors, reduced_vectors, batch_size=4000)
         trustworthiness_scores_original[file_path] = tw
         print(f'Trustworthiness for {file_path}: {tw}')
     

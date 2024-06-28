@@ -64,6 +64,8 @@ def run_function_with_overrides(func: callable, config: object):
     logger.info(f"GPU emory usage for {func.__name__} was {mem_after - mem_before:,} Mb")
     logger.info(f"Time for executing {func.__name__} was {end - start:.1f} seconds")
 
+    return mem_after - mem_before, end - start
+
 
 # Example usage
 if __name__ == "__main__":

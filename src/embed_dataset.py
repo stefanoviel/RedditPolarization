@@ -121,8 +121,9 @@ def process_and_save_embeddings(REDDIT_DATA_DIR:str, MODEL_NAME: str, TABLE_NAME
                 dataset.resize(new_shape)
                 
                 # Write new embeddings to the dataset
-                print("inserting from ", current_shape[0], " to ", new_shape[0], " shape: ", embeddings.shape)
                 dataset[current_shape[0]:new_shape[0], :] = embeddings
+
+            # TODO: data should be saved continuously
         
 
         logger.info(f"shape of the dataset: {dataset.shape}")   

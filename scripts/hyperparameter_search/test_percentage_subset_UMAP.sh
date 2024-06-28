@@ -17,7 +17,7 @@ for size in "${subset_sizes[@]}"
 do
     echo "Running UMAP with subset size $size"
     python src/dimensionality_reduction.py \
-        --DIMENSIONALITY_REDUCTION_FILE "/cluster/work/coss/stviel/output/diff_dimensions/subset_$size.h5" \
+        --DIMENSIONALITY_REDUCTION_FILE "output/testing_pipeline_1/test_percentage_subset/subset_$size.h5" \
         --PARTIAL_FIT_SAMPLE_SIZE $size \
         --UMAP_COMPONENTS 5
 done

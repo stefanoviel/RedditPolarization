@@ -9,17 +9,13 @@ No ripetizioni
 TODO:
 there is some stocasticity in the dimensionality reduction. for the final result it would probably require multiple runs. 
 score filtering should differe every year (e.g. keep only the one with the 50% highest scores)
+embedding should be paralelized accross different gpu
+
+trustworthiness takes very long on small dataset (more than one minutes fro 500k embeddings). Testing done with this metrics will have to be run on a subset. PROBLEM: 
 
 
-
-keep running on very small subset (stronger subsampling)
 un altro test sul dimensionality reduction
 * match clusters by maximizing the number of elements which interesect between the two
-report of memory usage in each part of pipeline
-go back to duckdb to read from parquest files
 
 
 
-do we actually need a DB? 
-It make the querying of the subreddit easier later. We will only use it to find which the corresponding information of a certain embedding
-It should only contain the data we're going to embed. We don't want to copy everything. Create the parquet files with only the data you need. 

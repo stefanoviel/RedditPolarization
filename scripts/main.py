@@ -5,11 +5,12 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from logging_config import configure_get_logger
 import config
+import time
 
 from src.embed_dataset import process_and_save_embeddings
-from src.load_data_to_db import main_load_files_in_db
 from src.dimensionality_reduction import UMAP_transform_partial_fit
 from src.hdbscan import run_dbscan
+from src.utils.function_runner import run_function_with_overrides
 
 
 def main():
@@ -18,38 +19,20 @@ def main():
         
     logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__)
 
-    # main_load_files_in_db(
-    #     config.REDDIT_DATA_DIR,
-    #     config.TABLE_NAME,
-    #     config.ATTRIBUTE_TO_EXTRACT,
-    #     config.MIN_POST_LENGTH,
-    #     config.MIN_SCORE,
-    #     config.SUBSET_FRACTION,
-    # )
+    memory_embeddings, time_embeddings = run_function_with_overrides(process_and_save_embeddings, config)
+    time.sleep(5)  # wait for the GPU to free up memory
+    memory_umap, time_umap = run_function_with_overrides(UMAP_transform_partial_fit, config)
+    time.sleep(5)  # wait for the GPU to free up memory
+    memory_hdbscan, time_hdbscan = run_function_with_overrides(run_dbscan, config)
 
-    process_and_save_embeddings(
-        config.DB_FILEPATH,
-        config.MODEL_NAME,
-        config.TABLE_NAME,
-        config.MODEL_BATCH_SIZE,
-        config.EMBEDDINGS_FILE
-    )
-
-    UMAP_transform_partial_fit(
-        config.EMBEDDINGS_FILE,
-        config.UMAP_N_Neighbors,
-        config.UMAP_COMPONENTS,
-        config.UMAP_MINDIST,
-        config.PARTIAL_FIT_SAMPLE_SIZE,
-        config.DIMENSIONALITY_REDUCTION_FILE,
-    )
-
-    run_dbscan(
-        HDBS_MIN_CLUSTERSIZE,
-        HDBS_MIN_SAMPLES,
-        DIMENSIONALITY_REDUCTION_FILE,
-        CLUSTER_FILE
-    )
+    logger.info("-------------------------------")
+    logger.info("Memory and time usage:")
+    logger.info(f"Memory usage for embeddings: {memory_embeddings} MB")
+    logger.info(f"Time for embeddings: {time_embeddings} s")
+    logger.info(f"Memory usage for UMAP: {memory_umap} MB")
+    logger.info(f"Time for UMAP: {time_umap} s")
+    logger.info(f"Memory usage for HDBSCAN: {memory_hdbscan} MB")
+    logger.info(f"Time for HDBSCAN: {time_hdbscan} s")
 
 
 if __name__ == "__main__":

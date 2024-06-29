@@ -18,6 +18,7 @@ def launch_jobs(cluster: bool = True):
 
     file_names = extract_zst_file_names(folder_path=zst_folder_path)
     file_names = sorted(file_names)
+    file_names = ['RS_2022-01', 'RS_2022-02', 'RS_2022-03', 'RS_2022-04', 'RS_2022-05', 'RS_2022-06', 'RS_2022-07', 'RS_2022-08', 'RS_2022-09', 'RS_2022-10', 'RS_2022-11', 'RS_2022-12', 'RS_2023-01', 'RS_2023-02', 'RS_2023-03', 'RS_2023-04']
     print(file_names)
 
     os.system('chmod +x run_script.sh')

@@ -75,10 +75,15 @@ def generate_embeddings(model:SentenceTransformer, texts:list[str]) -> torch.Ten
 
 #     return count
 
-def fetch_data_in_batches(con, table_name:str, batch_size: int):
+def fetch_data_in_batches(con, table_name:str, batch_size: int, min_score: int, min_post_length: int):
     """Fetch data from the specified table in batches."""
 
-    query = f"SELECT title, selftext FROM {table_name};"
+    query = f"""SELECT title, selftext
+                FROM {table_name}
+                WHERE LENGTH(title) + LENGTH(selftext) > {min_post_length}
+                AND score > {min_score};
+                """
+    
     con.execute(query)
 
     while True:
@@ -89,7 +94,7 @@ def fetch_data_in_batches(con, table_name:str, batch_size: int):
 
 
 
-def process_and_save_embeddings(REDDIT_DATA_DIR:str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, EMBEDDINGS_FILE: str):
+def process_and_save_embeddings(REDDIT_DATA_DIR:str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, EMBEDDINGS_FILE: str, MIN_SCORE: int, MIN_POST_LENGTH: int):
     """Fetch data in batches, generate embeddings, and save them incrementally."""
     model = initialize_model(MODEL_NAME)
 
@@ -101,7 +106,7 @@ def process_and_save_embeddings(REDDIT_DATA_DIR:str, MODEL_NAME: str, TABLE_NAME
         data_initialized = False
         dataset = None
         
-        for batch in fetch_data_in_batches(con, TABLE_NAME, MODEL_BATCH_SIZE):
+        for batch in fetch_data_in_batches(con, TABLE_NAME, MODEL_BATCH_SIZE, MIN_SCORE, MIN_POST_LENGTH):
             texts = prepare_texts(batch)
             print(len(texts))
             if texts:

@@ -18,4 +18,9 @@ un altro test sul dimensionality reduction
 * match clusters by maximizing the number of elements which interesect between the two
 
 
+https://github.com/lmcinnes/umap/issues/268
 
+
+TODO: 
+metrics with renamed clusters
+finish pipeline + evaluation chatgpt + try lama3

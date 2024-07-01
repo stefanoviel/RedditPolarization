@@ -81,6 +81,8 @@ def UMAP_transform_partial_fit(
     UMAP_MINDIST,
     PARTIAL_FIT_SAMPLE_SIZE,
     DIMENSIONALITY_REDUCTION_FILE,
+    NEGATIVE_SAMPLE_RATE,
+    UMAP_N_EPOCHS,
 ):
     """
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
@@ -92,6 +94,8 @@ def UMAP_transform_partial_fit(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,
         min_dist=UMAP_MINDIST,
+        negative_sample_rate=NEGATIVE_SAMPLE_RATE,
+        n_epochs=UMAP_N_EPOCHS,
         verbose=True
     )
 
@@ -99,6 +103,7 @@ def UMAP_transform_partial_fit(
         features.shape[0], int(features.shape[0] * PARTIAL_FIT_SAMPLE_SIZE), replace=False
     )
     
+    logger.info(f"Fitting UMAP on {len(sampled_indices)} samples")
     sampled_features = features[sampled_indices]
     
     local_model.fit(sampled_features)

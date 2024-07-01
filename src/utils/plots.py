@@ -5,6 +5,7 @@ import h5py
 import os
 import cuml
 import json
+import sklearn
 import random
 from tqdm import tqdm
 import pandas as pd
@@ -22,12 +23,14 @@ def compute_plot_trutworthiness(original_file, original_dataset_name, reduced_fi
 
     original_vectors = load_vectors(original_file, original_dataset_name)
 
+
+
     trustworthiness_scores_original = {}
 
     for file_path in os.listdir(reduced_files_directory):
         file_path = os.path.join(reduced_files_directory, file_path)
         reduced_vectors = load_vectors(file_path, reduced_dataset_name)
-        tw = cuml.metrics.trustworthiness(original_vectors, reduced_vectors, batch_size=4000)
+        tw = cuml.metrics.trustworthiness(original_vectors, reduced_vectors, n_neighbors= 30, batch_size=4000)
         trustworthiness_scores_original[file_path] = tw
         print(f'Trustworthiness for {file_path}: {tw}')
     
@@ -130,3 +133,34 @@ def extract_statistics_from_folder(directory, num_files_to_process, subset_fract
 
     df = pd.DataFrame(all_data)
     return df
+
+
+def compute_cluster_metrics(function, ground_truth_file, ground_truth_dataset_name, directory_with_predictions, directory_with_predictions_dataset_name):
+    """Compute the Adjusted Rand Index between ground truth and predicted labels."""
+    ground_truth_labels = load_vectors(ground_truth_file, ground_truth_dataset_name)        
+    print("ground truth", len(ground_truth_labels))
+
+
+    ari_scores = {}
+
+
+    for file in os.listdir(directory_with_predictions):
+        print(file, ground_truth_file)
+        if file.endswith('.h5'):
+            file_path = os.path.join(directory_with_predictions, file)
+            predicted_labels = load_vectors(file_path, directory_with_predictions_dataset_name)
+            # remove the -1 labels
+            print(file, "number of unique predictedlabels:", len(np.unique(predicted_labels)))
+
+            # using sklearn as the cuml one is broken
+            ari = function(ground_truth_labels, predicted_labels)
+            print(f'ADJ for {file_path}: {ari}')
+            ari_scores[file_path] = ari
+    
+    return ari_scores
+
+
+def plot_ARI(ari_scores, label=None):
+    """Plot the ARI scores."""
+    plt.plot(list(ari_scores.keys()), list(ari_scores.values()), label=label)
+    plt.legend()

@@ -35,12 +35,14 @@ MODEL_BATCH_SIZE = 320_000
 # Dimensionality reduction 
 DIMENSIONALITY_REDUCTION_FILE = os.path.join(OUTPUT_DIR, "dimensional_reduction.h5")
 UMAP_COMPONENTS = 5
-UMAP_N_Neighbors = 3
+UMAP_N_Neighbors = 4 # increase this to get more global structure
 UMAP_MINDIST = 0.01
 PARTIAL_FIT_SAMPLE_SIZE = 0.1
-
+NEGATIVE_SAMPLE_RATE = 15 # understand better what it 
+LEARNING_RATE = 0.25
+UMAP_N_EPOCHS = 5000
 
 # clustering 
 CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "clusters.h5")
-HDBS_MIN_CLUSTERSIZE= 10
-HDBS_MIN_SAMPLES = 10
+HDBS_MIN_CLUSTERSIZE= 200
+HDBS_MIN_SAMPLES = 25 # should be small 

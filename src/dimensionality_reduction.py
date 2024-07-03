@@ -79,7 +79,7 @@ def UMAP_transform_partial_fit(
     UMAP_N_Neighbors,
     UMAP_COMPONENTS,
     UMAP_MINDIST,
-    PARTIAL_FIT_SAMPLE_SIZE,
+    PARTIAL_FIT_DIM_REDUCTION,
     DIMENSIONALITY_REDUCTION_FILE,
     NEGATIVE_SAMPLE_RATE,
     UMAP_N_EPOCHS,
@@ -100,7 +100,7 @@ def UMAP_transform_partial_fit(
     )
 
     sampled_indices = np.random.choice(
-        features.shape[0], int(features.shape[0] * PARTIAL_FIT_SAMPLE_SIZE), replace=False
+        features.shape[0], int(features.shape[0] * PARTIAL_FIT_DIM_REDUCTION), replace=False
     )
     
     logger.info(f"Fitting UMAP on {len(sampled_indices)} samples")
@@ -111,7 +111,7 @@ def UMAP_transform_partial_fit(
     subset_size = len(sampled_indices)
 
     # iterate over the rest of the data in chunks of subset_size and transform
-    # subset size (derived from PARTIAL_FIT_SAMPLE_SIZE) should be set to be the maximum subset of data on which we can fit
+    # subset size (derived from PARTIAL_FIT_DIM_REDUCTION) should be set to be the maximum subset of data on which we can fit
     # given a certain GPU memory
 
     result = None

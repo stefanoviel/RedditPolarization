@@ -22,5 +22,6 @@ https://github.com/lmcinnes/umap/issues/268
 
 
 TODO: 
-metrics with renamed clusters
-finish pipeline + evaluation chatgpt + try lama3
+
+add memory usage everywhere
+evaluation chatgpt + try lama3

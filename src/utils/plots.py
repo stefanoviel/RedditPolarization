@@ -135,25 +135,65 @@ def extract_statistics_from_folder(directory, num_files_to_process, subset_fract
     return df
 
 
-def compute_cluster_metrics(function, ground_truth_file, ground_truth_dataset_name, directory_with_predictions, directory_with_predictions_dataset_name):
+def match_clusters(labels1, labels2):
+
+    # Determine unique clusters and index elements in each cluster
+    unique_clusters1 = np.unique(labels1)
+    unique_clusters2 = np.unique(labels2)
+
+    # Create mappings from labels to list indices
+    cluster_map1 = {label: np.where(labels1 == label)[0] for label in unique_clusters1}
+    cluster_map2 = {label: np.where(labels2 == label)[0] for label in unique_clusters2}
+
+    # Determine intersections and track the best matches
+    best_matches = {}
+    for label1, elements1 in cluster_map1.items():
+        max_intersection = -1
+        best_label2 = None
+        for label2, elements2 in cluster_map2.items():
+            intersection_size = len(np.intersect1d(elements1, elements2))
+            # If current intersection is greater than max recorded, update the match
+            if intersection_size > max_intersection:
+                max_intersection = intersection_size
+                best_label2 = label2
+        best_matches[label1] = best_label2
+
+    # Generate new labels based on matches
+    new_label_counter = 0
+    new_label_map = {}
+    new_labels1 = np.zeros_like(labels1)
+    new_labels2 = np.zeros_like(labels2)
+
+    for label1, label2 in best_matches.items():
+        if label1 not in new_label_map or label2 not in new_label_map:
+            new_label_map[label1] = new_label_counter
+            new_label_map[label2] = new_label_counter
+            new_label_counter += 1
+        new_labels1[np.where(labels1 == label1)] = new_label_map[label1]
+        new_labels2[np.where(labels2 == label2)] = new_label_map[label2]
+
+    return new_labels1.tolist(), new_labels2.tolist()
+
+
+def match_and_compute_cluster_metrics(function, ground_truth_file, ground_truth_dataset_name, directory_with_predictions, directory_with_predictions_dataset_name):
     """Compute the Adjusted Rand Index between ground truth and predicted labels."""
     ground_truth_labels = load_vectors(ground_truth_file, ground_truth_dataset_name)        
     print("ground truth", len(ground_truth_labels))
 
-
     ari_scores = {}
-
 
     for file in os.listdir(directory_with_predictions):
         print(file, ground_truth_file)
         if file.endswith('.h5'):
             file_path = os.path.join(directory_with_predictions, file)
             predicted_labels = load_vectors(file_path, directory_with_predictions_dataset_name)
-            # remove the -1 labels
             print(file, "number of unique predictedlabels:", len(np.unique(predicted_labels)))
 
+            # Match clusters between ground truth and predicted labels
+            ground_truth_labels_matched, predicted_labels = match_clusters(ground_truth_labels, predicted_labels)
+
             # using sklearn as the cuml one is broken
-            ari = function(ground_truth_labels, predicted_labels)
+            ari = function(ground_truth_labels_matched, predicted_labels)
             print(f'ADJ for {file_path}: {ari}')
             ari_scores[file_path] = ari
     

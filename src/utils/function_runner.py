@@ -64,7 +64,7 @@ def run_function_with_overrides(func: callable, config: object):
     logger.info(f"GPU emory usage for {func.__name__} was {mem_after - mem_before:,} Mb")
     logger.info(f"Time for executing {func.__name__} was {end - start:.1f} seconds")
 
-    return mem_after - mem_before, end - start
+    return mem_after, mem_after - mem_before, end - start
 
 
 # Example usage
@@ -76,14 +76,14 @@ if __name__ == "__main__":
         UMAP_N_Neighbors,
         UMAP_COMPONENTS,
         UMAP_MINDIST,
-        PARTIAL_FIT_SAMPLE_SIZE,
+        PARTIAL_FIT_DIM_REDUCTION,
         DIMENSIONALITY_REDUCTION_FILE,
     ):
         print(f"EMBEDDINGS_FILE: {EMBEDDINGS_FILE}")
         print(f"UMAP_N_Neighbors: {UMAP_N_Neighbors}")
         print(f"UMAP_COMPONENTS: {UMAP_COMPONENTS}")
         print(f"UMAP_MINDIST: {UMAP_MINDIST}")
-        print(f"PARTIAL_FIT_SAMPLE_SIZE: {PARTIAL_FIT_SAMPLE_SIZE}")
+        print(f"PARTIAL_FIT_DIM_REDUCTION: {PARTIAL_FIT_DIM_REDUCTION}")
         print(f"DIMENSIONALITY_REDUCTION_FILE: {DIMENSIONALITY_REDUCTION_FILE}")
 
     run_function_with_overrides(UMAP_transform_partial_fit, config)

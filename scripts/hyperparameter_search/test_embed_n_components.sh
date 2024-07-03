@@ -13,6 +13,6 @@ for i in 2 3 4 5 6 7 8 9 10 15 20 30 50
 do
     python src/dimensionality_reduction.py \
         --DIMENSIONALITY_REDUCTION_FILE output/testing_pipeline_1/test_embed_n_components/components_${i}.h5 \
-        --PARTIAL_FIT_SAMPLE_SIZE 0.2 \
+        --PARTIAL_FIT_DIM_REDUCTION 0.2 \
         --UMAP_COMPONENTS ${i}
 done

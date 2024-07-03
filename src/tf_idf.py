@@ -23,10 +23,7 @@ import numpy as np
 import cuml
 import pandas as pd
 
-
-
-
-from src.utils.function_runner import run_function_with_overrides
+from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 
 def create_database_connection(parquet_directory:str, table_name:str):
     """Create and return a database connection using the provided configuration."""
@@ -119,7 +116,7 @@ def get_important_words(posts, max_features):
     # Combine title and selftext for each post to create a document
     documents = [title + " " + selftext for title, selftext in posts]
 
-    documents = pd.Series(documents[:100000])
+    documents = pd.Series(documents)
 
     # part of urls would get tokenized as words due to punctuation removal
     my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["just", "https", "com", "www", "ve", "http", "don", "amp", "didn"]))
@@ -129,7 +126,7 @@ def get_important_words(posts, max_features):
 
 
     # Fit and transform the documents
-    tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
+    tfidf_matrix = execute_with_gpu_logging(tfidf_vectorizer.fit_transform, documents)
 
     # Get feature names to use as output instead of feature indices
     feature_names = tfidf_vectorizer.get_feature_names()

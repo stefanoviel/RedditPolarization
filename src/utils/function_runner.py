@@ -13,6 +13,10 @@ import argparse
 import inspect
 import subprocess
 import time
+import GPUtil
+import logging
+import time
+from functools import wraps
 
 def get_gpu_memory():
     """Function to get the current GPU memory usage."""
@@ -41,6 +45,39 @@ def override_params_with_cmd_args(default_params: dict, cmd_args: dict):
     return default_params
 
 
+
+def execute_with_gpu_logging(func, *args, **kwargs):
+    """
+    Executes a function with GPU memory usage logging.
+    
+    Parameters:
+        func (callable): The function to execute.
+        *args: Positional arguments to pass to the function.
+        **kwargs: Keyword arguments to pass to the function.
+        
+    Returns:
+        The result of the function execution.
+    """
+    # Log initial GPU memory usage
+    gpus = GPUtil.getGPUs()
+    initial_mem = {gpu.id: gpu.memoryUsed for gpu in gpus}
+    start_time = time.time()
+
+    result = func(*args, **kwargs)
+
+    # Log final GPU memory usage
+    gpus = GPUtil.getGPUs()
+    final_mem = {gpu.id: gpu.memoryUsed for gpu in gpus}
+    end_time = time.time()
+
+    for gpu_id in initial_mem.keys():
+        memory_used = final_mem[gpu_id] - initial_mem[gpu_id]
+        if memory_used > 0:
+            logging.info(f"GPU {gpu_id}: {final_mem}MB of GPU memory were filled after running {func.__name__} and it  took {end_time - start_time:.2f}s")
+    
+    return result
+
+
 def run_function_with_overrides(func: callable, config: object):
     """Run a function with the default parameters. If any of the parameters are provided as command line arguments, 
     override the default values with the provided ones. """
@@ -56,15 +93,10 @@ def run_function_with_overrides(func: callable, config: object):
         logger.info(f"{key}: {value}")
 
     start = time.time()
-    mem_before = get_gpu_memory()
     func(**final_params)
-    mem_after = get_gpu_memory()
     end = time.time()
 
-    logger.info(f"GPU emory usage for {func.__name__} was {mem_after - mem_before:,} Mb")
-    logger.info(f"Time for executing {func.__name__} was {end - start:.1f} seconds")
-
-    return mem_after, mem_after - mem_before, end - start
+    return end - start
 
 
 # Example usage

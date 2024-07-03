@@ -52,3 +52,26 @@ PARTIAL_FIT_CLUSTER = 0.1
 # tfidf
 TFIDF_MAX_FEATURES = 10
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
+
+# topic Naming
+LLM_NAME = "Qwen/Qwen2-7B-Instruct-GPTQ-Int8"
+TOPIC_NAMING_FILE = os.path.join(OUTPUT_DIR, "topic_naming.json")
+PROMPT = """ Given the following lists of words, each associated with a cluster number, identify a succinct topic that captures the essence of the words in each list. Below are some examples of how the output should be structured in JSON format.
+
+    Examples:
+    - Cluster 4: "game, team, season, like, time, year, player, play, games, 10" -> "Sports Analysis"
+    - Cluster -1: "new, like, time, know, game, people, think, make, good, really" -> "General Discussion"
+    - Cluster 32: "team, vs, game, twitch, tv, twitter, youtube, 00, logo, mt" -> "Live Streaming and Social Media"
+    - Cluster 24: "art, oc, painting, like, drawing, new, paint, pen, imgur, time" -> "Art and Drawing"
+
+    Your task is to find an appropriate topic for the list from cluster 0. Present your output in the following JSON format:
+
+    {{
+    "topic": "Your identified topic here"
+    }}
+
+    Please perform the same task for the list associated with cluster 0:
+    - Cluster 0: {list_of_words} ->
+
+    """
+

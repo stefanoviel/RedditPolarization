@@ -6,6 +6,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from logging_config import configure_get_logger
 import config
 
+from cuml.common import logger
+logger.set_level(logger.level_error)
+
 if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
 logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__)
@@ -22,7 +25,7 @@ import dask.array as da
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
-from src.utils.function_runner import run_function_with_overrides
+from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 from src.utils.utils import load_embeddings
 
 
@@ -95,8 +98,7 @@ def UMAP_transform_partial_fit(
         n_components=UMAP_COMPONENTS,
         min_dist=UMAP_MINDIST,
         negative_sample_rate=NEGATIVE_SAMPLE_RATE,
-        n_epochs=UMAP_N_EPOCHS,
-        verbose=True
+        n_epochs=UMAP_N_EPOCHS
     )
 
     sampled_indices = np.random.choice(
@@ -106,7 +108,8 @@ def UMAP_transform_partial_fit(
     logger.info(f"Fitting UMAP on {len(sampled_indices)} samples")
     sampled_features = features[sampled_indices]
     
-    local_model.fit(sampled_features)
+    execute_with_gpu_logging(local_model.fit, sampled_features)
+
 
     subset_size = len(sampled_indices)
 
@@ -117,7 +120,7 @@ def UMAP_transform_partial_fit(
     result = None
     for i in tqdm(range(0, features.shape[0], subset_size)):
         chunk = features[i : i + subset_size]
-        transformed_chunk = local_model.transform(chunk)
+        transformed_chunk = execute_with_gpu_logging(local_model.transform, chunk)
         if result is None:
             result = transformed_chunk
         else:

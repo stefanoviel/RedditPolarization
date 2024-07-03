@@ -16,6 +16,7 @@ from tqdm import tqdm
 import numpy as np
 import cuml
 import time
+from src.utils.utils import load_embeddings, execute_with_gpu_logging
 
 from cuml.common import logger
 logger.set_level(logger.level_error)
@@ -23,10 +24,9 @@ logger.set_level(logger.level_error)
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
-
 os.environ['CUDA_VISIBLE_DEVICES']=str(1)
 
-from src.utils.utils import load_embeddings
+
 
 
 def save_clusters_hdf5(clusters, file_name):
@@ -71,7 +71,7 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIM
 
     batch_size = int(data.shape[0] * PARTIAL_FIT_CLUSTER)
     train_data = data[np.random.choice(data.shape[0], batch_size, replace=False)]
-    clusterer = scanner.fit(train_data)
+    clusterer = execute_with_gpu_logging(scanner.fit, train_data)
 
     logger.info("HDBSCAN model fitted successfully")
     
@@ -83,7 +83,7 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIM
     for i in range(0, len(data), batch_size):
         print(f"Processing batch {i//batch_size + 1}/{len(data)//batch_size}", end="\r")
         batch_data = data[i:i+batch_size]
-        clusters, probs = cuml.cluster.hdbscan.approximate_predict(clusterer, batch_data)
+        clusters, probs = execute_with_gpu_logging(cuml.cluster.hdbscan.approximate_predict, clusterer, batch_data)
         all_clusters.append(clusters)
 
     final_clusters = np.concatenate(all_clusters)

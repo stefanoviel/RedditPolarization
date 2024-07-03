@@ -20,25 +20,21 @@ def main():
         
     logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__)
 
-    mem_after_embd, memory_embeddings, time_embeddings = run_function_with_overrides(process_and_save_embeddings, config)
+    time_embeddings = run_function_with_overrides(process_and_save_embeddings, config)
     time.sleep(5)  # wait for the GPU to free up memory
-    mem_after_umap, memory_umap, time_umap = run_function_with_overrides(UMAP_transform_partial_fit, config)
+    time_umap = run_function_with_overrides(UMAP_transform_partial_fit, config)
     time.sleep(5)  # wait for the GPU to free up memory
-    mem_afterhdb, memory_hdbscan, time_hdbscan = run_function_with_overrides(run_dbscan, config)
+    time_hdbscan = run_function_with_overrides(run_dbscan, config)
     time.sleep(5)  # wait for the GPU to free up memory
-    mem_after_tfidf, memory_tfidf, time_tfidf = run_function_with_overrides(find_save_important_words, config)
+    time_tfidf = run_function_with_overrides(find_save_important_words, config)
 
 
 
     logger.info("-------------------------------")
     logger.info("Memory and time usage:")
-    logger.info(f"Memory usage for embeddings: {memory_embeddings} MB")
     logger.info(f"Time for embeddings: {time_embeddings/60:,} min")
-    logger.info(f"Memory usage for UMAP: {memory_umap} MB")
     logger.info(f"Time for UMAP: {time_umap} s")
-    logger.info(f"Memory usage for HDBSCAN: {memory_hdbscan} MB, Memory after HDBSCAN: {mem_afterhdb} MB")
     logger.info(f"Time for HDBSCAN: {time_hdbscan} s")
-    logger.info(f"Memory usage for TF-IDF: {memory_tfidf} MB, Memory after TF-IDF: {mem_after_tfidf} MB")
     logger.info(f"Time for TF-IDF: {time_tfidf:,} s")
 
 

@@ -33,3 +33,6 @@ def sample_hdf5(input_filename, output_filename, sample_fraction=0.1):
                     outfile.create_dataset(dataset_name, data=sampled_data)
                 else:
                     print(f"Not enough data to sample in dataset {dataset_name}")
+
+
+                    

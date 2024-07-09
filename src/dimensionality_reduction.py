@@ -31,7 +31,7 @@ from src.utils.utils import load_embeddings
 
 def UMAP_fit_transform(embedding_filename, n_neighbors, n_components, min_dist):
 
-    features = load_embeddings(embedding_filename, "embeddings")
+    features = load_embeddings(embedding_filename, "data")
 
     reducer = cuml.UMAP(
         n_neighbors=n_neighbors, n_components=n_components, min_dist=min_dist
@@ -46,11 +46,11 @@ def save_umap_coordinates(coordinates, output_filename):
     Save UMAP coordinates to an HDF5 file.
     """
     with h5py.File(output_filename, "w") as file:
-        file.create_dataset("umap_coordinates", data=coordinates)
+        file.create_dataset("data", data=coordinates)
 
 def random_baseline(EMBEDDINGS_FILE, UMAP_COMPONENTS, DIMENSIONALITY_REDUCTION_FILE):
     print("Running random baseline")
-    features = load_embeddings(EMBEDDINGS_FILE, "embeddings")
+    features = load_embeddings(EMBEDDINGS_FILE, "data")
     random_projection = np.random.rand(features.shape[1], UMAP_COMPONENTS)
     save_umap_coordinates(random_projection, DIMENSIONALITY_REDUCTION_FILE)
 
@@ -67,7 +67,7 @@ def UMAP_transform_full_fit(
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
 
-    features = load_embeddings(EMBEDDINGS_FILE, "embeddings")
+    features = load_embeddings(EMBEDDINGS_FILE, "data")
     local_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,
@@ -91,7 +91,7 @@ def UMAP_transform_partial_fit(
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
     
-    features = load_embeddings(EMBEDDINGS_FILE, "embeddings")
+    features = load_embeddings(EMBEDDINGS_FILE, "data")
 
     local_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,

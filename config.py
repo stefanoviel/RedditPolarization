@@ -64,3 +64,5 @@ PROMPT = """ Given the following lists of words, each associated with a cluster 
 
     """
 
+# graph
+GRAPH_FILE = os.path.join(OUTPUT_DIR, "graph.pickle")

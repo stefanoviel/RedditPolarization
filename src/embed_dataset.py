@@ -72,8 +72,6 @@ def prepare_texts_and_ids(data: list[tuple[int, str, str]]) -> tuple[list[str], 
     return texts, ids
 
 
-
-
 def generate_embeddings(model:SentenceTransformer, texts:list[str]) -> torch.Tensor:
     """
     Generate embeddings for the given texts using the provided model.
@@ -148,7 +146,7 @@ def process_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAM
                 if not data_initialized:
                     num_embeddings, embedding_dim = embeddings.shape
                     embeddings_maxshape = (None, embedding_dim)
-                    embeddings_dataset = f.create_dataset("embeddings", shape=(0, embedding_dim), maxshape=embeddings_maxshape, dtype='float32', chunks=True)
+                    embeddings_dataset = f.create_dataset("data", shape=(0, embedding_dim), maxshape=embeddings_maxshape, dtype='float32', chunks=True)
                     data_initialized = True
 
                 current_shape = embeddings_dataset.shape

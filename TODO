@@ -1,27 +1,8 @@
 
-
-Order stuff to embed by length 
-Check the data what is there? Just links maybe? 
-Path parametrised
-No ripetizioni
-
-
 TODO:
 there is some stocasticity in the dimensionality reduction. for the final result it would probably require multiple runs. 
 score filtering should differe every year (e.g. keep only the one with the 50% highest scores)
-embedding should be paralelized accross different gpu
-
-trustworthiness takes very long on small dataset (more than one minutes fro 500k embeddings). Testing done with this metrics will have to be run on a subset. PROBLEM: 
-
-
-un altro test sul dimensionality reduction
-* match clusters by maximizing the number of elements which interesect between the two
-
-
-https://github.com/lmcinnes/umap/issues/268
-
-
-TODO: 
+trustworthiness takes very long on small dataset (more than one minutes fro 500k embeddings). Testing done with this metrics will have to be run on a subset.
 add min_df=2, ngram_range=(1, 2) in TF-IDF
 put random seeds everywhere
-evaluation chatgpt + try lama3
+

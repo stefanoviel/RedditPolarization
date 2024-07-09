@@ -79,7 +79,7 @@ def get_cluster_text(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_
 
     # Load cluster information
     with h5py.File(CLUSTER_FILE, 'r') as cluster_file:
-        clusters = cluster_file['clusters'][:]
+        clusters = cluster_file['data'][:]
 
 
     print("Everything loaded in memory")

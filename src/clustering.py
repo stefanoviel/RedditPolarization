@@ -42,11 +42,11 @@ def save_clusters_hdf5(clusters, file_name):
     """Save clusters data to an HDF5 file."""
     print("saving clusters to", file_name)
     with h5py.File(file_name, 'w') as f:
-        f.create_dataset('clusters', data=clusters)
+        f.create_dataset('data', data=clusters)
 
 
 def run_dbscan_full_data(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str):
-    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "umap_coordinates")
+    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "data")
     
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=HDBS_MIN_CLUSTERSIZE, min_samples=HDBS_MIN_SAMPLES)
     clusters = scanner.fit_predict(data)
@@ -143,7 +143,7 @@ def test_dbcv():
 
 def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str, PARTIAL_FIT_CLUSTER: float):
     # Load the full dataset
-    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "umap_coordinates")
+    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "data")
     
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=HDBS_MIN_CLUSTERSIZE, min_samples=HDBS_MIN_SAMPLES, prediction_data=True)
 
@@ -197,7 +197,7 @@ def plot_silhouette_heatmap(silhouette_scores):
     
 
 def run_hdbscan_search_best_dbcv(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str):
-    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "umap_coordinates")
+    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "data")
     data_size = len(data)
 
     best_min_cluster_size = None
@@ -205,8 +205,8 @@ def run_hdbscan_search_best_dbcv(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FIL
     best_dbcv = -1
     DBCV_scores = []
 
-    for min_cluster_size in [data_size//10, data_size//50 , data_size//100, data_size//500, data_size//1000, data_size//10000]:
-        for min_samples in [5, 10, 30, 50, 100, 1000]:
+    for min_cluster_size in [data_size//10, data_size//50]: # , data_size//100, data_size//500, data_size//1000, data_size//10000]:
+        for min_samples in [10]: # , 30, 50, 100, 1000]:
             
             scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, gen_min_span_tree=True)
             clusters = scanner.fit_predict(data)
@@ -226,6 +226,8 @@ def run_hdbscan_search_best_dbcv(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FIL
     logger.info(f"Best min_cluster_size: {best_min_cluster_size}, Best min_samples: {best_min_samples}, Best dbcv: {best_dbcv}")
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_min_cluster_size, min_samples=best_min_samples)
     clusters = scanner.fit_predict(data)
+
+    # TODO: plot heatmap of scores
         
     save_clusters_hdf5(clusters, CLUSTER_FILE)
 

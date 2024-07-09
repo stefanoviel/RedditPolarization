@@ -34,7 +34,7 @@ def create_database_connection(parquet_directory:str, table_name:str):
     con.execute(sql_query)
     return con
 
-def load_cluster_ids(file_path):
+def load_cluster_info(file_path):
     with open(file_path, 'r') as file:
         ids = json.load(file)
     return ids
@@ -75,7 +75,7 @@ def get_cluster_text(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_
     con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME)
 
     # Load cluster IDs
-    ids = load_cluster_ids(IDS_FILE)
+    infos = load_cluster_info(IDS_FILE)
 
     # Load cluster information
     with h5py.File(CLUSTER_FILE, 'r') as cluster_file:
@@ -85,10 +85,10 @@ def get_cluster_text(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_
     print("Everything loaded in memory")
     # Map IDs to their clusters
     cluster_to_ids = {}
-    for id, cluster in zip(ids, clusters):
+    for info, cluster in zip(infos, clusters):
         if cluster not in cluster_to_ids:
             cluster_to_ids[cluster] = []
-        cluster_to_ids[cluster].append(id)
+        cluster_to_ids[cluster].append(info[0])
 
     # Execute a query for each cluster and yield results
     for cluster, cluster_ids in cluster_to_ids.items():

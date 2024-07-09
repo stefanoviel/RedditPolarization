@@ -22,6 +22,6 @@ https://github.com/lmcinnes/umap/issues/268
 
 
 TODO: 
-
-add memory usage everywhere
+add min_df=2, ngram_range=(1, 2) in TF-IDF
+put random seeds everywhere
 evaluation chatgpt + try lama3

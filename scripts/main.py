@@ -9,7 +9,7 @@ import time
 
 from src.embed_dataset import process_and_save_embeddings
 from src.dimensionality_reduction import UMAP_transform_partial_fit
-from src.hdbscan import run_dbscan
+from src.clustering import run_hdbscan_search_best_dbcv
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import find_save_important_words
 
@@ -24,7 +24,7 @@ def main():
     time.sleep(5)  # wait for the GPU to free up memory
     time_umap = run_function_with_overrides(UMAP_transform_partial_fit, config)
     time.sleep(5)  # wait for the GPU to free up memory
-    time_hdbscan = run_function_with_overrides(run_dbscan, config)
+    time_hdbscan = run_function_with_overrides(run_hdbscan_search_best_dbcv, config)
     time.sleep(5)  # wait for the GPU to free up memory
     time_tfidf = run_function_with_overrides(find_save_important_words, config)
 

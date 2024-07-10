@@ -1,17 +1,17 @@
 import os
-import time
 import logging
-from datetime import datetime
 import logging.config
+from datetime import datetime
 
-def setup_logging(log_file: str = 'app.log', log_level: str = 'DEBUG') -> None:
+def setup_logging(log_file: str, log_level: str, logger_name: str) -> None:
     """
-    Set up logging configuration
+    Set up logging configuration specific to the given logger name.
 
     Parameters:
 
     log_file (str): The name of the log file to write logs to.
-    log_level (str): The logging level. Can be one of 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'.
+    log_level (str): The logging level.
+    logger_name (str): The name of the logger to configure.
 
     """
 
@@ -37,30 +37,28 @@ def setup_logging(log_file: str = 'app.log', log_level: str = 'DEBUG') -> None:
             },
         },
         'loggers': {
-            '': {  # root logger
+            logger_name: {  # configure logger for your application namespace
                 'handlers': ['console', 'file'],
                 'level': log_level,
-                'propagate': True,
+                'propagate': False,
             },
         }
     }
 
     logging.config.dictConfig(logging_config)
 
-
-
 def configure_get_logger(output_dir: str, experiment_name:str, log_level: str = 'DEBUG', executed_file_name: str = __file__) -> logging.Logger:
-    """Get the logger named as the current file"""
+    """Get the logger named after the executed file to isolate logging to this application."""
 
+    logger_name = os.path.splitext(os.path.basename(executed_file_name))[0]
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_file_name = f"app.log"
+    log_file_name = f"{logger_name}_{current_time}.log"
 
-    log_file = os.path.join(output_dir, "logs", log_file_name)
+    log_dir = os.path.join(output_dir, "logs")
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
 
-    if not os.path.exists(os.path.join(output_dir, "logs")):
-        os.makedirs(os.path.join(output_dir, "logs"))
+    log_file = os.path.join(log_dir, log_file_name)
 
-    print(output_dir)
-
-    setup_logging(log_file, log_level)
-    return logging.getLogger(executed_file_name)
+    setup_logging(log_file, log_level, logger_name)
+    return logging.getLogger(logger_name)

@@ -21,6 +21,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 import pickle
+import igraph as ig
 
 
 def load_data(embeddings_file, clusters_file):
@@ -38,13 +39,6 @@ def compute_centroids(embeddings, clusters):
 def compute_distances(centroids):
     return cdist(centroids, centroids, metric='euclidean')
 
-def build_graph(distances, cluster_ids):
-    G = nx.Graph()
-    for i, id_i in enumerate(cluster_ids):
-        for j, id_j in enumerate(cluster_ids):
-            if i != j:
-                G.add_edge(id_i, id_j, weight=distances[i, j])
-    return G
 
 def plot_and_save_graph(graph, filename):
     plt.figure(figsize=(12, 12))
@@ -59,20 +53,40 @@ def plot_and_save_graph(graph, filename):
     plt.savefig(filename)
     plt.show()
 
-def create_save_graph(DIMENSIONALITY_REDUCTION_FILE, CLUSTER_FILE):
+def save_graph(graph, filename):
+    pickle.dump(graph, open(filename, 'wb'))
+
+def load_graph(adjacency_matrix_file):
+    # load with h5
+    with h5py.File(adjacency_matrix_file, 'r') as f:
+        adjacency_matrix = np.array(f['data'])
+    
+    bool_adjacency = adjacency_matrix.astype(bool)
+    graph = ig.Graph.Adjacency(bool_adjacency.tolist(), mode=ig.ADJ_UNDIRECTED)
+    edge_weights = adjacency_matrix[bool_adjacency]
+    graph.es['weight'] = edge_weights
+
+
+    return graph
+
+def save_distance_matrix(distances, filename):
+    # save with h5
+    with h5py.File(filename, 'w') as f:
+        f.create_dataset('data', data=distances)
+
+def create_save_graph(DIMENSIONALITY_REDUCTION_FILE, CLUSTER_FILE, ADJACENCY_MATRIX):
     embeddings, clusters = load_data(DIMENSIONALITY_REDUCTION_FILE, CLUSTER_FILE)
     new_clusters = clusters[clusters != -1]
     embeddings = embeddings[clusters != -1]
 
     centroids, cluster_ids = compute_centroids(embeddings, new_clusters)
     distances = compute_distances(centroids)
-    graph = build_graph(distances, cluster_ids)
-    return graph
+    save_distance_matrix(distances, ADJACENCY_MATRIX)
 
 
 if __name__ == '__main__':
-    graph = create_save_graph(config.DIMENSIONALITY_REDUCTION_FILE, config.CLUSTER_FILE)
-    plot_and_save_graph(graph, 'output/graph.png')
-    pickle.dump(graph, open(config.GRAPH_FILE, 'wb'))
+    run_function_with_overrides(create_save_graph, config)
+
+
 
 

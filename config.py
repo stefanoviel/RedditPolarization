@@ -65,4 +65,5 @@ PROMPT = """ Given the following lists of words, each associated with a cluster 
     """
 
 # graph
-GRAPH_FILE = os.path.join(OUTPUT_DIR, "graph.pickle")
+ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")
+RESOLUTION_PARAMETER = [1.03]

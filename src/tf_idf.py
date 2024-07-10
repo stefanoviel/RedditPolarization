@@ -34,31 +34,13 @@ def create_database_connection(parquet_directory:str, table_name:str):
     con.execute(sql_query)
     return con
 
-def load_cluster_info(file_path):
+def load_cluster_ids(file_path):
     with open(file_path, 'r') as file:
         ids = json.load(file)
     return ids
 
 
-def fetch_posts_by_ids(database_connection, table_name, ids):
-    """
-    Fetch post details for a list of IDs from the DuckDB database.
-    
-    Args:
-        database_connection: A DuckDB connection object.
-        table_name: Name of the table from which to fetch data.
-        ids: A list of IDs to query in the database.
-    
-    Returns:
-        A list of tuples, each containing (id, title, selftext).
-    """
-    placeholders = ', '.join(["'" + str(id) + "'" for id in ids])  # Create a comma-separated list of IDs in single quotes
-    query = f"SELECT id, title, selftext FROM {table_name} WHERE id IN ({placeholders})"
-    result = database_connection.execute(query).fetchall()
-    return result
-
-
-def get_cluster_text(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_FILE:str):
+def get_cluster_posts(con, ids, clusters, TABLE_NAME):
     """
     Yield the title and selftext for each cluster by executing a database query for each cluster.
 
@@ -71,24 +53,13 @@ def get_cluster_text(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_
     Yields:
         tuple: cluster identifier, list of tuples (title, selftext) for that clustersr  
     """
-    # Create a database connection
-    con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME)
 
-    # Load cluster IDs
-    infos = load_cluster_info(IDS_FILE)
-
-    # Load cluster information
-    with h5py.File(CLUSTER_FILE, 'r') as cluster_file:
-        clusters = cluster_file['data'][:]
-
-
-    print("Everything loaded in memory")
     # Map IDs to their clusters
     cluster_to_ids = {}
-    for info, cluster in zip(infos, clusters):
+    for id, cluster in zip(ids, clusters):
         if cluster not in cluster_to_ids:
             cluster_to_ids[cluster] = []
-        cluster_to_ids[cluster].append(info[0])
+        cluster_to_ids[cluster].append(id)
 
     # Execute a query for each cluster and yield results
     for cluster, cluster_ids in cluster_to_ids.items():
@@ -115,31 +86,22 @@ def get_important_words(posts, max_features):
 
     # Combine title and selftext for each post to create a document
     documents = [title + " " + selftext for title, selftext in posts]
-
     documents = pd.Series(documents)
 
     # part of urls would get tokenized as words due to punctuation removal
     my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["just", "https", "com", "www", "ve", "http", "don", "amp", "didn"]))
 
-    # Create a TF-IDF Vectorizer object
     tfidf_vectorizer = cuml.feature_extraction.text.TfidfVectorizer(stop_words=my_stop_words, lowercase=True,  max_features=max_features)
-
-
-    # Fit and transform the documents
     tfidf_matrix = execute_with_gpu_logging(tfidf_vectorizer.fit_transform, documents)
 
     # Get feature names to use as output instead of feature indices
     feature_names = tfidf_vectorizer.get_feature_names()
-
-    # Sum tfidf frequency of each term through documents
     sums = tfidf_matrix.sum(axis=0)
 
-    # Connecting term to its sums frequency
     data = []
     for col, term in enumerate(feature_names.to_pandas()):
         data.append((term, sums[0, col]))
 
-    # Sorting items by frequency and get the most significant terms
     important_words = sorted(data, key=lambda x: x[1], reverse=True)
 
     return [word for word, _ in important_words]
@@ -155,11 +117,20 @@ def find_save_important_words(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:
         IDS_FILE (str): HDF5 file path that contains all the IDs to consider.
         OUTPUT_DIR (str): Directory to save the results.
     """
-    
 
     topic_cluster = {}
 
-    for cluster, posts in get_cluster_text(REDDIT_DATA_DIR, TABLE_NAME, CLUSTER_FILE, IDS_FILE):
+    # Create a database connection
+    con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME)
+
+    # Load cluster IDs
+    ids = load_cluster_ids(IDS_FILE)
+
+    # Load cluster information
+    with h5py.File(CLUSTER_FILE, 'r') as cluster_file:
+        clusters = cluster_file['data'][:]
+
+    for cluster, posts in get_cluster_posts(con, ids, clusters, TABLE_NAME):
         important_words = get_important_words(posts, max_features=TFIDF_MAX_FEATURES)
         
         topic_cluster[int(cluster)] = important_words

@@ -22,14 +22,17 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 import pickle
 import igraph as ig
+import json
 
+def load_h5file(file):
+    with h5py.File(file, 'r') as f:
+        data = np.array(f['data'])
+    return data
 
-def load_data(embeddings_file, clusters_file):
-    with h5py.File(embeddings_file, 'r') as f:
-        embeddings = np.array(f['data'])
-    with h5py.File(clusters_file, 'r') as f:
-        clusters = np.array(f['data'])
-    return embeddings, clusters
+def load_json(file):
+    with open(file, 'r') as f:
+        data = json.load(f)
+    return data
 
 def compute_centroids(embeddings, clusters):
     unique_clusters = np.unique(clusters) 
@@ -69,18 +72,42 @@ def load_graph(adjacency_matrix_file):
 
     return graph
 
+def weighted_overlap_tfidf(topic1, topic2):
+    # Convert list of tuples into dictionaries
+    dict1 = {word: weight for word, weight in topic1}
+    dict2 = {word: weight for word, weight in topic2}
+
+    # Find common words between the two topics
+    common_words = set(dict1.keys()) & set(dict2.keys())
+
+    # Calculate weighted overlap using TF-IDF weights
+    similarity_score = sum(dict1[word] * dict2[word] for word in common_words)
+
+    return similarity_score
+
+def compute_distance_topics(topics):
+    distances = np.zeros((len(topics), len(topics)))
+    for key1, topic1 in (topics.items()):
+        for key2, topic2 in (topics.items()):
+            if key1 != key2:
+                similarity = weighted_overlap_tfidf(topic1, topic2)
+                distances[int(key1), int(key2)] = 1 / (1 + similarity)
+    return distances
+
+
 def save_distance_matrix(distances, filename):
     # save with h5
     with h5py.File(filename, 'w') as f:
         f.create_dataset('data', data=distances)
 
-def create_save_graph(DIMENSIONALITY_REDUCTION_FILE, CLUSTER_FILE, ADJACENCY_MATRIX):
-    embeddings, clusters = load_data(DIMENSIONALITY_REDUCTION_FILE, CLUSTER_FILE)
-    new_clusters = clusters[clusters != -1]
-    embeddings = embeddings[clusters != -1]
+def create_save_graph(ADJACENCY_MATRIX, TFIDF_FILE):
 
-    centroids, cluster_ids = compute_centroids(embeddings, new_clusters)
-    distances = compute_distances(centroids)
+    topics = load_json(TFIDF_FILE)
+
+    distances = compute_distance_topics(topics)
+
+    print(distances)
+
     save_distance_matrix(distances, ADJACENCY_MATRIX)
 
 

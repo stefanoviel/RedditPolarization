@@ -75,14 +75,14 @@ def main(ADJACENCY_MATRIX: str, REDDIT_DATA_DIR:str , TABLE_NAME:str, TFIDF_MAX_
         print(f"Resolution parameter: {resolution_parameter}")
         partitions = apply_leiden(graph, resolution_parameter=resolution_parameter)  
         with h5py.File(CLUSTER_FILE, 'r') as cluster_file:
-            clusters = cluster_file['data'][:]
+            clusters = cluster_file['clusters'][:]
         ids = load_cluster_ids(IDS_FILE)
 
         merged_clusters = merge_clusters(partitions, clusters)
 
         topics = []
         for cluster, posts in get_cluster_posts(db_connection, ids, merged_clusters, TABLE_NAME):
-            important_words = get_important_words(posts, max_features=TFIDF_MAX_FEATURES)        
+            important_words = [word for word, _ in get_important_words(posts, max_features=TFIDF_MAX_FEATURES)]
             topics.append(important_words)
             print(f"Cluster {cluster}: {important_words}")
 

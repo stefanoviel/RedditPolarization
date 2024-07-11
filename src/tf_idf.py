@@ -22,6 +22,7 @@ from sklearn.feature_extraction import text
 import numpy as np
 import cuml
 import pandas as pd
+from tqdm import tqdm
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 
@@ -89,7 +90,7 @@ def get_important_words(posts, max_features):
     documents = pd.Series(documents)
 
     # part of urls would get tokenized as words due to punctuation removal
-    my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["just", "https", "com", "www", "ve", "http", "don", "amp", "didn"]))
+    my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["https", "com", "www", "ve", "http", "don", "amp", "didn"]))
 
     tfidf_vectorizer = cuml.feature_extraction.text.TfidfVectorizer(stop_words=my_stop_words, lowercase=True,  max_features=max_features)
     tfidf_matrix = execute_with_gpu_logging(tfidf_vectorizer.fit_transform, documents)
@@ -100,11 +101,13 @@ def get_important_words(posts, max_features):
 
     data = []
     for col, term in enumerate(feature_names.to_pandas()):
-        data.append((term, sums[0, col]))
+        data.append([term, float(sums[0, col])])
 
     important_words = sorted(data, key=lambda x: x[1], reverse=True)
 
-    return [word for word, _ in important_words]
+    return [word for word, score in important_words]
+
+
 
 def find_save_important_words(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_FILE:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str):
     """
@@ -128,16 +131,15 @@ def find_save_important_words(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:
 
     # Load cluster information
     with h5py.File(CLUSTER_FILE, 'r') as cluster_file:
-        clusters = cluster_file['data'][:]
+        clusters = cluster_file['clusters'][:]
 
-    for cluster, posts in get_cluster_posts(con, ids, clusters, TABLE_NAME):
+    for cluster, posts in tqdm(get_cluster_posts(con, ids, clusters, TABLE_NAME), total=len(set(clusters))):
         important_words = get_important_words(posts, max_features=TFIDF_MAX_FEATURES)
         
         topic_cluster[int(cluster)] = important_words
     
     with open(TFIDF_FILE, 'w') as file:
         json.dump(topic_cluster, file, indent=4)
-
 
 if __name__ == "__main__":
 

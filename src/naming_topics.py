@@ -61,6 +61,7 @@ def process_topics(tfidf_data, tokenizer, model, device, prompt):
     """Process each topic and generate names using the model."""
     topic_naming = {}
     for cluster, words in tfidf_data.items():
+        words = [word[0] for word in words]
         prompt_text = format_prompt(prompt, words)
         model_inputs = create_tokenized_prompt(prompt_text, tokenizer, device)
         generated_ids = generate_response(model, model_inputs)

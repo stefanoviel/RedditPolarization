@@ -1,14 +1,14 @@
 import os
 import time
 
-EXPERIMENT_NAME = "testing_pipeline"
+EXPERIMENT_NAME = "full_2017"
 OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 # OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # where to get the data from
-REDDIT_DATA_DIR = 'data/parquet'
+REDDIT_DATA_DIR = 'data/big_test'
 
 # Database configuration and parameters for filtering
 TABLE_NAME = 'submissions'
@@ -39,7 +39,7 @@ HDBS_MIN_SAMPLES = 20
 PARTIAL_FIT_CLUSTER = 0.1
 
 # tfidf
-TFIDF_MAX_FEATURES = 10
+TFIDF_MAX_FEATURES = 30
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 
 # topic Naming
@@ -66,4 +66,4 @@ PROMPT = """ Given the following lists of words, each associated with a cluster 
 
 # graph
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")
-RESOLUTION_PARAMETER = [1.03]
+RESOLUTION_PARAMETER = [1, 1.1]

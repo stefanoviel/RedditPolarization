@@ -13,7 +13,7 @@ REDDIT_DATA_DIR = 'data/big_test'
 # Database configuration and parameters for filtering
 TABLE_NAME = 'submissions'
 MIN_SCORE = 10
-MIN_POST_LENGTH = 30
+MIN_POST_LENGTH = 40
 
 # Embeddings 
 EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings.h5")

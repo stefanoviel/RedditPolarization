@@ -110,11 +110,10 @@ def UMAP_transform_partial_fit(
     
     execute_with_gpu_logging(local_model.fit, sampled_features)
 
-
     subset_size = len(sampled_indices)
 
     # iterate over the rest of the data in chunks of subset_size and transform
-    # subset size (derived from PARTIAL_FIT_DIM_REDUCTION) should be set to be the maximum subset of data on which we can fit
+    # subset size (derived from PARTIAL_FIT_DIM_REDUCTION) should be the maximum subset of data on which we can fit
     # given a certain GPU memory
 
     result = None

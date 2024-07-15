@@ -55,7 +55,7 @@ def get_cluster_posts(con, ids, clusters, TABLE_NAME):
         tuple: cluster identifier, list of tuples (title, selftext) for that clustersr  
     """
 
-    # Map IDs to their clusters
+    # Map IDs to their clusters, assuming clusters and IDs are in the same order
     cluster_to_ids = {}
     for id, cluster in zip(ids, clusters):
         if cluster not in cluster_to_ids:

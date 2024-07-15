@@ -7,5 +7,4 @@ add min_df=2, ngram_range=(1, 2) in TF-IDF
 put random seeds everywhere
 
 
-
-find better way to build graph of topics
+DBCV discounted 

@@ -31,7 +31,7 @@ def create_database_connection(parquet_directory:str, table_name:str):
 
     # Construct a SQL statement to read all files
     query_files = ', '.join(f"'{f}'" for f in files)
-    sql_query = f"CREATE TABLE {table_name} AS SELECT author, id, title, selftext, score, num_comments, subreddit, created_utc  FROM read_parquet([{query_files}], union_by_name=True)"
+    sql_query = f"CREATE TABLE {table_name} AS SELECT author, id, title, selftext, score, num_comments, subreddit, created_utc, media  FROM read_parquet([{query_files}], union_by_name=True)"
     con.execute(sql_query)
     return con
     
@@ -45,7 +45,6 @@ def initialize_model(model_name:str) -> SentenceTransformer:
     model.to(device)
     model.eval()
     return model
-
 
 
 def prepare_texts_and_ids(data: list[tuple[int, str, str]]) -> tuple[list[str], list[int]]:
@@ -108,9 +107,12 @@ def fetch_data_in_batches(con, table_name:str, batch_size: int, min_score: int, 
 
     query = f"""SELECT id, title, selftext
             FROM {table_name}
-            WHERE LENGTH(title) + LENGTH(selftext) > {min_post_length}
+            WHERE LENGTH(title) > {min_post_length}
             AND score > {min_score}
-            AND selftext NOT LIKE '%[deleted]%';
+            AND selftext NOT LIKE '%[deleted]%'
+            AND selftext NOT LIKE '%[removed]%'
+            AND media = FALSE 
+            AND LENGTH(title) > 30;
             """
     
     con.execute(query)
@@ -163,8 +165,6 @@ def process_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAM
         logger.info(f"shape of the embeddings dataset: {embeddings_dataset.shape}")
         logger.info(f"Embeddings saved to {EMBEDDINGS_FILE}")
         logger.info(f"IDs saved to {IDS_FILE}")
-
-
 
 
 

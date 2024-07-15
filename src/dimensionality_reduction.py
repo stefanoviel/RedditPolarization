@@ -26,12 +26,12 @@ os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-from src.utils.utils import load_embeddings
+from src.utils.utils import load_h5py
 
 
 def UMAP_fit_transform(embedding_filename, n_neighbors, n_components, min_dist):
 
-    features = load_embeddings(embedding_filename, "data")
+    features = load_h5py(embedding_filename, "data")
 
     reducer = cuml.UMAP(
         n_neighbors=n_neighbors, n_components=n_components, min_dist=min_dist
@@ -50,7 +50,7 @@ def save_umap_coordinates(coordinates, output_filename):
 
 def random_baseline(EMBEDDINGS_FILE, UMAP_COMPONENTS, DIMENSIONALITY_REDUCTION_FILE):
     print("Running random baseline")
-    features = load_embeddings(EMBEDDINGS_FILE, "data")
+    features = load_h5py(EMBEDDINGS_FILE, "data")
     random_projection = np.random.rand(features.shape[1], UMAP_COMPONENTS)
     save_umap_coordinates(random_projection, DIMENSIONALITY_REDUCTION_FILE)
 
@@ -67,7 +67,7 @@ def UMAP_transform_full_fit(
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
 
-    features = load_embeddings(EMBEDDINGS_FILE, "data")
+    features = load_h5py(EMBEDDINGS_FILE, "data")
     local_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,
@@ -91,7 +91,7 @@ def UMAP_transform_partial_fit(
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
     
-    features = load_embeddings(EMBEDDINGS_FILE, "data")
+    features = load_h5py(EMBEDDINGS_FILE, "data")
 
     local_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,

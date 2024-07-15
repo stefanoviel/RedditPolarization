@@ -13,49 +13,12 @@ logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, execute
 
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from src.utils.utils import load_json, format_prompt, create_tokenized_prompt, generate_response, save_json_file, load_model_and_tokenizer
+
 import torch
 import json
 
 
-def load_model_and_tokenizer(model_name):
-    """Initialize the model and tokenizer."""
-    model = AutoModelForCausalLM.from_pretrained(model_name, torch_dtype="auto", device_map="auto")
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
-    return model, tokenizer
-
-def format_prompt(prompt, list_of_words):
-    """Format the prompt text with specified words."""
-    return prompt.format(list_of_words=list_of_words)
-
-def load_json_file(file_path):
-    """Load data from a JSON file."""
-    with open(file_path, "r") as f:
-        return json.load(f)
-
-def save_json_file(data, file_path):
-    """Save data to a JSON file."""
-    with open(file_path, "w") as f:
-        json.dump(data, f, indent=4)
-
-def create_tokenized_prompt(prompt_text, tokenizer, device):
-    """Tokenize and prepare the prompt for the model."""
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": prompt_text}
-    ]
-    text = tokenizer.apply_chat_template(
-        messages,
-        tokenize=False,
-        add_generation_prompt=True
-    )
-    return tokenizer([text], return_tensors="pt").to(device)
-
-def generate_response(model, model_inputs):
-    """Generate a response using the model."""
-    generated_ids = model.generate(model_inputs.input_ids, max_new_tokens=512)
-    generated_ids = [output_ids[len(input_ids):] for input_ids, output_ids in zip(model_inputs.input_ids, generated_ids)]
-    return generated_ids
 
 def process_topics(tfidf_data, tokenizer, model, device, prompt):
     """Process each topic and generate names using the model."""
@@ -76,7 +39,7 @@ def process_topics(tfidf_data, tokenizer, model, device, prompt):
 def main(TFIDF_FILE, LLM_NAME, TOPIC_NAMING_FILE, PROMPT):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model, tokenizer = load_model_and_tokenizer(LLM_NAME)
-    tfidf_data = load_json_file(TFIDF_FILE)
+    tfidf_data = load_json(TFIDF_FILE)
     topic_naming = process_topics(tfidf_data, tokenizer, model, device, PROMPT)
     save_json_file(topic_naming, TOPIC_NAMING_FILE)
 

@@ -1,14 +1,14 @@
 import os
 import time
 
-EXPERIMENT_NAME = "full_2017"
+EXPERIMENT_NAME = "testing_pipeline"
 OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 # OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # where to get the data from
-REDDIT_DATA_DIR = 'data/big_test'
+REDDIT_DATA_DIR = 'data/parquet'
 
 # Database configuration and parameters for filtering
 TABLE_NAME = 'submissions'
@@ -37,6 +37,7 @@ CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "clusters.h5")
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
 PARTIAL_FIT_CLUSTER = 0.1
+MINIMUM_PERCENTAGE_NON_NOISE = 0.68
 
 # tfidf
 TFIDF_MAX_FEATURES = 30

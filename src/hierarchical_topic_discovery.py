@@ -26,7 +26,8 @@ from gensim.corpora import Dictionary
 from gensim.utils import simple_preprocess
 
 from src.create_graph import load_graph
-from src.tf_idf import create_database_connection, get_cluster_posts, get_important_words, load_cluster_ids
+from src.tf_idf import get_cluster_posts, get_important_words, load_cluster_ids
+from src.utils.utils import create_database_connection
 import leidenalg
 from tqdm import tqdm
 

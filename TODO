@@ -8,3 +8,9 @@ put random seeds everywhere
 
 
 DBCV discounted 
+module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6
+
+exam for chatgpt
+input: clusters, posts, topics
+sample some post from each cluster
+create tests where each post is associated with 5 options of topics and you measure the accuracy

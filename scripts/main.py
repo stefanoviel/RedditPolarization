@@ -20,12 +20,9 @@ def main():
         
     logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__)
 
-    # time_embeddings = run_function_with_overrides(process_and_save_embeddings, config)
-    # time.sleep(5)  # wait for the GPU to free up memory
-    # time_umap = run_function_with_overrides(UMAP_transform_partial_fit, config)
-    time.sleep(5)  # wait for the GPU to free up memory
+    time_embeddings = run_function_with_overrides(process_and_save_embeddings, config)
+    time_umap = run_function_with_overrides(UMAP_transform_partial_fit, config)
     time_hdbscan = run_function_with_overrides(run_hdbscan_search_best_dbcv, config)
-    time.sleep(5)  # wait for the GPU to free up memory
     time_tfidf = run_function_with_overrides(find_save_important_words, config)
 
 

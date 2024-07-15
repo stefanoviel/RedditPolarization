@@ -14,26 +14,14 @@ logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, execute
 import torch
 from sentence_transformers import SentenceTransformer
 import duckdb
-import psycopg2
 import h5py
 import json
 import yaml
 from tqdm import tqdm
-from src.utils.function_runner import run_function_with_overrides
 import langid
 
-
-def create_database_connection(parquet_directory:str, table_name:str):
-    """Create and return a database connection using the provided configuration."""
-    files = [f'{parquet_directory}/{file}' for file in os.listdir(parquet_directory)]
-
-    con = duckdb.connect(database=':memory:')
-
-    # Construct a SQL statement to read all files
-    query_files = ', '.join(f"'{f}'" for f in files)
-    sql_query = f"CREATE TABLE {table_name} AS SELECT author, id, title, selftext, score, num_comments, subreddit, created_utc, media  FROM read_parquet([{query_files}], union_by_name=True)"
-    con.execute(sql_query)
-    return con
+from src.utils.utils import create_database_connection
+from src.utils.function_runner import run_function_with_overrides
     
 
 def initialize_model(model_name:str) -> SentenceTransformer:
@@ -128,7 +116,7 @@ def process_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAM
     """Fetch data in batches, generate embeddings, and save them incrementally along with their corresponding IDs."""
     model = initialize_model(MODEL_NAME)
 
-    con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME)
+    con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"])
 
     tot_rows, rows_to_embed = count_rows_to_embed(con, TABLE_NAME, MIN_SCORE, MIN_POST_LENGTH)
     logger.info(f"Total rows to embed: {tot_rows:,}, filtered rows: {rows_to_embed[0][0]:,}")

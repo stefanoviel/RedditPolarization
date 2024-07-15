@@ -24,7 +24,7 @@ import seaborn as sns
 import pandas as pd
 import dbcv
 
-from src.utils.utils import load_embeddings
+from src.utils.utils import load_h5py
 from src.utils.function_runner import execute_with_gpu_logging
 from sklearn.metrics import silhouette_score
 from hdbscan import HDBSCAN
@@ -46,7 +46,7 @@ def save_clusters_hdf5(clusters, file_name):
 
 
 def run_dbscan_full_data(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str):
-    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "data")
+    data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
     
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=HDBS_MIN_CLUSTERSIZE, min_samples=HDBS_MIN_SAMPLES)
     clusters = scanner.fit_predict(data)
@@ -128,7 +128,7 @@ def DBCV(minimum_spanning_tree, labels, alpha=1.0):
         )
 
         # penalized for size of noise cluster
-        return score - alpha * noise_size / total
+        return score # - alpha * noise_size / total
 
 def test_dbcv():
     data = np.random.rand(10000, 2)
@@ -143,7 +143,7 @@ def test_dbcv():
 
 def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str, PARTIAL_FIT_CLUSTER: float):
     # Load the full dataset
-    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "data")
+    data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
     
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=HDBS_MIN_CLUSTERSIZE, min_samples=HDBS_MIN_SAMPLES, prediction_data=True)
 
@@ -197,7 +197,7 @@ def plot_silhouette_heatmap(silhouette_scores):
     
 
 def run_hdbscan_search_best_dbcv(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str):
-    data = load_embeddings(DIMENSIONALITY_REDUCTION_FILE, "umap_coordinates")
+    data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
     data_size = len(data)
     print('data size', data_size)
 
@@ -206,24 +206,24 @@ def run_hdbscan_search_best_dbcv(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FIL
     best_dbcv = -1
     DBCV_scores = []
 
-    for min_cluster_size in [data_size//100, data_size//1000, data_size//10000]:
-        for min_samples in [5, 10, 30]:
+    for min_cluster_size in [data_size//50, data_size//100, data_size//500, data_size//1000, data_size//1000]:
+        for min_samples in [5, 10, 15]:
 
             
             scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, gen_min_span_tree=True)
             clusters = scanner.fit_predict(data)
             
-            for alpha in [0.1, 0.5, 1.0]:
-                dbcv = DBCV(scanner.minimum_spanning_tree_, clusters, alpha=alpha)
-                DBCV_scores.append(dbcv)
+            # for alpha in [0.1, 0.5, 1.0]:
+            dbcv = DBCV(scanner.minimum_spanning_tree_, clusters) 
+            DBCV_scores.append(dbcv)
 
-                percentage_non_noise = len(clusters[clusters != -1]) / len(clusters)
-                if dbcv > best_dbcv and percentage_non_noise > 0.8: # only consider if more than 80% of data is not noise
-                    best_min_cluster_size = min_cluster_size
-                    best_min_samples = min_samples
-                    best_dbcv = dbcv
+            percentage_non_noise = len(clusters[clusters != -1]) / len(clusters)
+            if dbcv > best_dbcv and percentage_non_noise > 0.68: # only consider if more than 80% of data is not noise
+                best_min_cluster_size = min_cluster_size
+                best_min_samples = min_samples
+                best_dbcv = dbcv
 
-                logger.info(f"min_cluster_size: {min_cluster_size}, min_samples: {min_samples}, Number of clusters found: {len(np.unique(clusters))}, dbcv: {dbcv}, alpha: {alpha}, percentage_non_noise: {percentage_non_noise}")
+            logger.info(f"min_cluster_size: {min_cluster_size}, min_samples: {min_samples}, Number of clusters found: {len(np.unique(clusters))}, dbcv: {dbcv}, percentage_non_noise: {percentage_non_noise}")
 
     logger.info(f"Best min_cluster_size: {best_min_cluster_size}, Best min_samples: {best_min_samples}, Best dbcv: {best_dbcv}")
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_min_cluster_size, min_samples=best_min_samples)

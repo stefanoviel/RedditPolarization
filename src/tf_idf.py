@@ -1,4 +1,3 @@
-
 import os
 import sys
 
@@ -25,20 +24,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-
-def create_database_connection(parquet_directory:str, table_name:str):
-    """Create and return a database connection using the provided configuration."""
-    files = [f'{parquet_directory}/{file}' for file in os.listdir(parquet_directory)]
-    con = duckdb.connect(database=':memory:')
-    query_files = ', '.join(f"'{f}'" for f in files)
-    sql_query = f"CREATE TABLE {table_name} AS SELECT id, title, selftext FROM read_parquet([{query_files}], union_by_name=True)"
-    con.execute(sql_query)
-    return con
-
-def load_cluster_ids(file_path):
-    with open(file_path, 'r') as file:
-        ids = json.load(file)
-    return ids
+from src.utils.utils import create_database_connection, load_json
 
 
 def get_cluster_posts(con, ids, clusters, TABLE_NAME):
@@ -124,14 +110,14 @@ def find_save_important_words(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:
     topic_cluster = {}
 
     # Create a database connection
-    con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME)
+    con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["id", "title", "selftext"])
 
     # Load cluster IDs
-    ids = load_cluster_ids(IDS_FILE)
+    ids = load_json(IDS_FILE)
 
     # Load cluster information
     with h5py.File(CLUSTER_FILE, 'r') as cluster_file:
-        clusters = cluster_file['clusters'][:]
+        clusters = cluster_file['data'][:]
 
     for cluster, posts in tqdm(get_cluster_posts(con, ids, clusters, TABLE_NAME), total=len(set(clusters))):
         important_words = get_important_words(posts, max_features=TFIDF_MAX_FEATURES)

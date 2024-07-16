@@ -6,15 +6,8 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from logging_config import configure_get_logger
 import config
-
-from cuml.common import logger
-logger.set_level(logger.level_error)
-
-if not os.path.exists(config.OUTPUT_DIR):
-    os.makedirs(config.OUTPUT_DIR)
-logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
-
 from src.utils.function_runner import run_function_with_overrides
+from src.utils.utils import load_h5py, load_json
 import h5py
 import numpy as np
 import networkx as nx
@@ -23,6 +16,13 @@ from scipy.spatial.distance import cdist
 import pickle
 import igraph as ig
 import json
+from cuml.common import logger
+logger.set_level(logger.level_error)
+
+if not os.path.exists(config.OUTPUT_DIR):
+    os.makedirs(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
+
 
 def load_h5file(file):
     with h5py.File(file, 'r') as f:
@@ -39,9 +39,8 @@ def compute_centroids(embeddings, clusters):
     centroids = np.array([embeddings[clusters == k].mean(axis=0) for k in unique_clusters])
     return centroids, unique_clusters
 
-def compute_distances(centroids):
+def compute_distances_centroids(centroids):
     return cdist(centroids, centroids, metric='euclidean')
-
 
 def plot_and_save_graph(graph, filename):
     plt.figure(figsize=(12, 12))
@@ -68,8 +67,6 @@ def load_graph(adjacency_matrix_file):
     graph = ig.Graph.Adjacency(bool_adjacency.tolist(), mode=ig.ADJ_UNDIRECTED)
     edge_weights = adjacency_matrix[bool_adjacency]
     graph.es['weight'] = edge_weights
-
-
     return graph
 
 def weighted_overlap_tfidf(topic1, topic2):
@@ -87,6 +84,7 @@ def weighted_overlap_tfidf(topic1, topic2):
 
 def compute_distance_topics(topics):
     distances = np.zeros((len(topics), len(topics)))
+
     for key1, topic1 in (topics.items()):
         for key2, topic2 in (topics.items()):
             if key1 != key2:
@@ -94,25 +92,36 @@ def compute_distance_topics(topics):
                 distances[int(key1), int(key2)] = 1 / (1 + similarity)
     return distances
 
-
 def save_distance_matrix(distances, filename):
     # save with h5
     with h5py.File(filename, 'w') as f:
         f.create_dataset('data', data=distances)
 
-def create_save_graph(ADJACENCY_MATRIX, TFIDF_FILE):
+def create_save_graph_topics(ADJACENCY_MATRIX, TFIDF_FILE):
 
     topics = load_json(TFIDF_FILE)
 
-    distances = compute_distance_topics(topics)
-
+    # tried to make it in log form to spread the distances
+    distances = compute_distance_topics(topics) + 1e-6
+    distances = np.log(distances)
+    distances = distances - np.min(distances)
     print(distances)
 
     save_distance_matrix(distances, ADJACENCY_MATRIX)
 
+def create_save_centroid_position(CENTROID_POISITION, EMBEDDINGS_FILE, CLUSTER_FILE): 
+    embeddings = load_h5py(EMBEDDINGS_FILE, "data")
+    clusters = load_h5py(CLUSTER_FILE, "data")
+    centroids, unique_clusters = compute_centroids(embeddings, clusters)
+
+    # save centroids and unique clusters
+    with h5py.File(CENTROID_POISITION, 'w') as f:
+        f.create_dataset('centroids', data=centroids)
+        f.create_dataset('unique_clusters', data=unique_clusters)
+
 
 if __name__ == '__main__':
-    run_function_with_overrides(create_save_graph, config)
+    run_function_with_overrides(create_save_centroid_position, config)
 
 
 

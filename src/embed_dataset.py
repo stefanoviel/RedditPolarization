@@ -100,7 +100,6 @@ def fetch_data_in_batches(con, table_name:str, batch_size: int, min_score: int, 
             AND selftext NOT LIKE '%[deleted]%'
             AND selftext NOT LIKE '%[removed]%'
             AND media = FALSE 
-            AND LENGTH(title) > 30;
             """
     
     con.execute(query)

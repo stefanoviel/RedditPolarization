@@ -91,7 +91,7 @@ def get_important_words(posts, max_features):
 
     important_words = sorted(data, key=lambda x: x[1], reverse=True)
 
-    return [word for word, score in important_words]
+    return [word for word, _ in important_words]
 
 
 

@@ -213,7 +213,6 @@ def run_hdbscan_search_best_dbcv(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FIL
             scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, gen_min_span_tree=True)
             clusters = scanner.fit_predict(data)
             
-            # for alpha in [0.1, 0.5, 1.0]:
             dbcv = DBCV(scanner.minimum_spanning_tree_, clusters) 
             DBCV_scores.append(dbcv)
 

@@ -101,7 +101,7 @@ def solve_quiz(IDS_FILE, CLUSTER_FILE, TABLE_NAME, TFIDF_FILE, REDDIT_DATA_DIR, 
         print(f"Response: {response['answer']}")
         print("=======================================================================")
 
-    print(f"Number of correct answers: {correct_answers_count}/{len(questions)}")
+    print(f"Number of correct answers: {correct_answers_count}/{len(questions)}, accuracy: {correct_answers_count/len(questions)}")
 
 
 if __name__ == "__main__": 

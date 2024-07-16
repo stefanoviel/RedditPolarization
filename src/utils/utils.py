@@ -15,6 +15,13 @@ def load_h5py(file_path: str, db_name:str) -> np.ndarray:
         embeddings = file[db_name][:]
     return embeddings
 
+def save_h5py(data: np.ndarray, file_path: str, db_name:str):
+    """
+    Save a NumPy array to an HDF5 file.
+    """
+    with h5py.File(file_path, "w") as file:
+        file.create_dataset(db_name, data=data)
+
 def load_json(file_path):
     with open(file_path, 'r') as file:
         ids = json.load(file)

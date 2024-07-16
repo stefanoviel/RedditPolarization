@@ -6,16 +6,12 @@ trustworthiness takes very long on small dataset (more than one minutes fro 500k
 add min_df=2, ngram_range=(1, 2) in TF-IDF
 put random seeds everywhere
 
-Build graph with complete TF-IDF vector, apply leiden 
-    It doesn't work because it is a complete graph and nodes are at similar distances. It would still be cool to have higher level clusters. 
-    I'm not even sure it is meaningfull. I don't think there is an output that would make sense. 
-    It would still be cool to have, even if it isn't at different levels of granularity. 
-    There doesn't seem to be a good way of doing it. 
+
 
 module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6
 
-Go through the pipeline one more time, make sure everything is reasonable
-re-apply pipeline to topic clusters
+
+Order code, make it pretty
 Get it running on the cluster, and scale up to whole dataset
 
 

@@ -6,13 +6,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from logging_config import configure_get_logger
 import config
 
-from cuml.common import logger
-logger.set_level(logger.level_error)
-
-if not os.path.exists(config.OUTPUT_DIR):
-    os.makedirs(config.OUTPUT_DIR)
-logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
-
 from src.utils.function_runner import run_function_with_overrides
 import h5py
 from tqdm import tqdm
@@ -24,10 +17,17 @@ import seaborn as sns
 import pandas as pd
 import dbcv
 
-from src.utils.utils import load_h5py
+from src.utils.utils import load_h5py, save_h5py
 from src.utils.function_runner import execute_with_gpu_logging
 from sklearn.metrics import silhouette_score
 from hdbscan import HDBSCAN
+
+from cuml.common import logger
+logger.set_level(logger.level_error)
+
+if not os.path.exists(config.OUTPUT_DIR):
+    os.makedirs(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
 
 import logging
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
@@ -37,12 +37,6 @@ import numexpr
 
 os.environ['CUDA_VISIBLE_DEVICES']=str(1)
 
-
-def save_clusters_hdf5(clusters, file_name):
-    """Save clusters data to an HDF5 file."""
-    print("saving clusters to", file_name)
-    with h5py.File(file_name, 'w') as f:
-        f.create_dataset('data', data=clusters)
 
 
 def run_dbscan_full_data(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str):
@@ -55,7 +49,7 @@ def run_dbscan_full_data(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMEN
     score = dbcv.dbcv(data, clusters)
     print('SCORE', score)
     
-    save_clusters_hdf5(clusters, CLUSTER_FILE)
+    save_h5py(clusters, CLUSTER_FILE, 'data')
 
 
 def DBCV(minimum_spanning_tree, labels, alpha=1.0):
@@ -127,8 +121,8 @@ def DBCV(minimum_spanning_tree, labels, alpha=1.0):
             [(cluster_size[i] * V_index[i]) / total for i in range(num_clusters)]
         )
 
-        # penalized for size of noise cluster
-        return score # - alpha * noise_size / total
+        # penalized for size of noise cluster (as sugested in the paper)
+        return score * (total - noise_size) / total
 
 def test_dbcv():
     data = np.random.rand(10000, 2)
@@ -172,7 +166,7 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIM
     logger.info(f"Number of clusters: {len(np.unique(final_clusters))}")
     
     # Save the cluster results
-    save_clusters_hdf5(final_clusters, CLUSTER_FILE)
+    save_h5py(final_clusters, CLUSTER_FILE, 'data')
 
 
 def plot_silhouette_heatmap(silhouette_scores):
@@ -194,54 +188,102 @@ def plot_silhouette_heatmap(silhouette_scores):
     plt.savefig('output/silhouette_heatmap.png')
     plt.close()
 
-    
 
-def run_hdbscan_search_best_dbcv(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str):
-    data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
+def search_best_dbcv(data):
     data_size = len(data)
-    print('data size', data_size)
-
-    best_min_cluster_size = None
-    best_min_samples = None
-    best_dbcv = -1
+    print("len data", data_size)
+    best_params = {'min_cluster_size': None, 'min_samples': None, 'dbcv': -1}
     DBCV_scores = []
 
-    for min_cluster_size in [data_size//50, data_size//100, data_size//500, data_size//1000, data_size//1000]:
-        for min_samples in [5, 10, 15]:
+    tested_combinations = set()  # Set to store tested combinations
 
-            
+    for min_cluster_size_percentage in [0.0001, 0.001, 0.001, 0.01, 0.05]:
+        for min_samples in [2, 5, 10, 20, 50]:
+            min_cluster_size = int(data_size * min_cluster_size_percentage)
+
+
+            # Check if this combination has already been tested or violates constraints
+            combination = (min_cluster_size, min_samples)
+            if combination in tested_combinations  \
+                or min_samples < 2 or min_cluster_size < 2 \
+                or min_cluster_size > data_size or min_samples > data_size:
+                
+                print(f"min_cluster_size: {min_cluster_size}, min_samples: {min_samples}")
+                logger.info(f"Skipping combination: min_cluster_size={min_cluster_size}, min_samples={min_samples}")
+                continue  # Skip this iteration
+
             scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_samples, gen_min_span_tree=True)
             clusters = scanner.fit_predict(data)
             
             dbcv = DBCV(scanner.minimum_spanning_tree_, clusters) 
+            percentage_non_noise = np.mean(clusters != -1)
+
+            if dbcv > best_params['dbcv']:
+                best_params.update({
+                    'min_cluster_size': min_cluster_size,
+                    'min_samples': min_samples,
+                    'dbcv': dbcv
+                })
+
+            logger.info(f"min_cluster_size: {min_cluster_size}, min_samples: {min_samples}, "
+                        f"Number of clusters found: {len(np.unique(clusters))}, dbcv: {dbcv}, "
+                        f"percentage_non_noise: {percentage_non_noise}")
             DBCV_scores.append(dbcv)
 
-            percentage_non_noise = len(clusters[clusters != -1]) / len(clusters)
-            if dbcv > best_dbcv and percentage_non_noise > 0.68: # only consider if more than 80% of data is not noise
-                best_min_cluster_size = min_cluster_size
-                best_min_samples = min_samples
-                best_dbcv = dbcv
+    logger.info(f"Best min_cluster_size: {best_params['min_cluster_size']}, "
+                f"Best min_samples: {best_params['min_samples']}, Best dbcv: {best_params['dbcv']}")
 
-            logger.info(f"min_cluster_size: {min_cluster_size}, min_samples: {min_samples}, Number of clusters found: {len(np.unique(clusters))}, dbcv: {dbcv}, percentage_non_noise: {percentage_non_noise}")
+    return best_params, DBCV_scores
+    
 
-    logger.info(f"Best min_cluster_size: {best_min_cluster_size}, Best min_samples: {best_min_samples}, Best dbcv: {best_dbcv}")
-    scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_min_cluster_size, min_samples=best_min_samples)
+def hdbscan_clusters(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str):
+    data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
+
+    best_params, DBCV_scores = search_best_dbcv(data)
+
+    scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
     clusters = scanner.fit_predict(data)
-
-    # TODO: plot heatmap of scores
         
-    save_clusters_hdf5(clusters, CLUSTER_FILE)
+    save_h5py(clusters, CLUSTER_FILE, 'data')
 
     return DBCV_scores
+
+def hdbscan_subclusters(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str, SUBCLUSTER_FILE: str):
+    data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
+    clusters = load_h5py(CLUSTER_FILE, "data")
+
+    all_sub_clusters = np.full_like(clusters, -1)  # Initialize with -1 for noise
+    max_label_used = -1
+
+    for cluster in np.unique(clusters):
+        if cluster == -1:
+            continue
+
+        cluster_data = data[clusters == cluster]
+        print(f"Cluster {cluster}: {cluster_data.shape[0]}")
+
+        best_params, DBCV_scores = search_best_dbcv(cluster_data)
+
+        scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
+        sub_clusters = scanner.fit_predict(cluster_data)
+
+        # Ensure unique labels across different parent clusters
+        unique_sub_clusters = sub_clusters + max_label_used + 1
+        max_label_used = np.max(unique_sub_clusters)
+        all_sub_clusters[clusters == cluster] = unique_sub_clusters
+
+    save_h5py(all_sub_clusters, SUBCLUSTER_FILE, 'data')
+
+
 
 
 if __name__ == "__main__":
 
     # run_dbscan_full_data(config.DIMENSIONALITY_REDUCTION_FILE, config.CLUSTER_FILE)
 
-    run_function_with_overrides(run_hdbscan_search_best_dbcv, config)
+    run_function_with_overrides(hdbscan_clusters, config)
 
-
+# if you set a hard threshold then you loose anything that is below it. 
 
 
     

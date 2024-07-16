@@ -33,7 +33,9 @@ LEARNING_RATE = 1.0
 UMAP_N_EPOCHS = 500
 
 # clustering 
-CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "clusters.h5")
+# CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "clusters.h5")
+CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "subclusters.h5")
+SUBCLUSTER_FILE = os.path.join(OUTPUT_DIR, "subclusters.h5")
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
 PARTIAL_FIT_CLUSTER = 0.1

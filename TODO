@@ -11,6 +11,8 @@ put random seeds everywhere
 module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6
 
 
+return TF-IDF matrix, do clustering on that
+
 Order code, make it pretty
 Get it running on the cluster, and scale up to whole dataset
 

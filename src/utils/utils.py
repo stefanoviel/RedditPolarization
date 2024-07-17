@@ -27,6 +27,10 @@ def load_json(file_path):
         ids = json.load(file)
     return ids
 
+def save_json(data, file_path):
+    with open(file_path, 'w') as file:
+        json.dump(data, file, indent=4)
+
 def sample_hdf5(input_filename, output_filename, sample_fraction=0.1):
     # Open the input HDF5 file
     with h5py.File(input_filename, 'r') as file:

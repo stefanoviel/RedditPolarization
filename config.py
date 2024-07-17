@@ -33,8 +33,7 @@ LEARNING_RATE = 1.0
 UMAP_N_EPOCHS = 500
 
 # clustering 
-# CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "clusters.h5")
-CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "subclusters.h5")
+CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "clusters.h5")
 SUBCLUSTER_FILE = os.path.join(OUTPUT_DIR, "subclusters.h5")
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
@@ -42,8 +41,10 @@ PARTIAL_FIT_CLUSTER = 0.1
 MINIMUM_PERCENTAGE_NON_NOISE = 0.68
 
 # tfidf
-TFIDF_MAX_FEATURES = 15
+TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
+TFIDF_WORDS_PER_CLUSTER = 10
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
+SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
 
 # topic Naming
 LLM_NAME = "Qwen/Qwen2-7B-Instruct-GPTQ-Int8"
@@ -69,5 +70,5 @@ PROMPT = """ Given the following lists of words, each associated with a cluster 
 
 # graph
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")
-CENTROID_POISITION = os.path.join(OUTPUT_DIR, "centroid_position.h5")
+CLUSTER_ORDER = os.path.join(OUTPUT_DIR, "cluster_order.json")
 RESOLUTION_PARAMETER = [1.8, 2, 2.5, 3]

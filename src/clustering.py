@@ -279,11 +279,7 @@ def hdbscan_subclusters(DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str, S
 
 if __name__ == "__main__":
 
-    # run_dbscan_full_data(config.DIMENSIONALITY_REDUCTION_FILE, config.CLUSTER_FILE)
-
-    run_function_with_overrides(hdbscan_clusters, config)
-
-# if you set a hard threshold then you loose anything that is below it. 
+    run_function_with_overrides(hdbscan_subclusters, config)
 
 
     

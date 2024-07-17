@@ -94,7 +94,7 @@ def prepare_documents(con: duckdb.DuckDBPyConnection, ids: list, clusters: list,
     all_clusters = []
     for cluster, posts in tqdm(get_cluster_posts(con, ids, clusters, table_name), total=len(set(clusters))):
         all_clusters.append(int(cluster))
-        cluster_words = " ".join([title + " " + selftext for title, selftext in posts[:10]]) # TODO: remove!!! just for testing
+        cluster_words = " ".join([title + " " + selftext for title, selftext in posts[:1000]]) 
         all_words.append(cluster_words)
     return pd.Series(all_words), all_clusters
 

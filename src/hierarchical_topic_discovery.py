@@ -6,6 +6,13 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from logging_config import configure_get_logger
 import config
 
+from cuml.common import logger
+logger.set_level(logger.level_error)
+
+if not os.path.exists(config.OUTPUT_DIR):
+    os.makedirs(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
+
 from src.utils.function_runner import run_function_with_overrides
 import h5py
 import numpy as np
@@ -31,15 +38,6 @@ from scipy.cluster.hierarchy import dendrogram, linkage
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import fcluster
 
-from cuml.common import logger
-logger.set_level(logger.level_error)
-
-if not os.path.exists(config.OUTPUT_DIR):
-    os.makedirs(config.OUTPUT_DIR)
-logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
-
-
-
 def hierarchical_topics_from_similarity(similarity_matrix, topic_labels, linkage_method='average'):
     """Generate a hierarchy of topics based on a cosine similarity matrix.
 
@@ -55,11 +53,13 @@ def hierarchical_topics_from_similarity(similarity_matrix, topic_labels, linkage
     np.fill_diagonal(distance_matrix, 0)
     condensed_distance_matrix = squareform(distance_matrix)
     Z = linkage(condensed_distance_matrix, method=linkage_method)
+
     plt.figure(figsize=(25, 10))
     dn = dendrogram(Z, labels=topic_labels, leaf_rotation=90)
     plt.savefig('dendrogram.png')
 
     return Z
+
 
 def compute_cluster_labels_at_each_merge(Z, cluster_order, cluster_per_post):
     """
@@ -70,6 +70,7 @@ def compute_cluster_labels_at_each_merge(Z, cluster_order, cluster_per_post):
     results = []
     for threshold in thresholds:
         labels = fcluster(Z, t=threshold, criterion='distance')
+
         label_map = {old_label: new_label for old_label, new_label in zip(cluster_order, labels)}
         mapped_labels = [label_map[cluster_label] for cluster_label in cluster_per_post]
         results.append({'Threshold': threshold, 'Labels': mapped_labels})
@@ -115,13 +116,15 @@ if __name__ == "__main__":
     cluster_id_per_post = load_h5py(config.CLUSTER_FILE, 'data')
     Z = hierarchical_topics_from_similarity(adjacency_matrix_file, cluster_order)
     results_df = compute_cluster_labels_at_each_merge(Z, cluster_order, cluster_id_per_post)
+
+    # all_coherence = []
     
-    all_coherences = []
     for index, row in results_df.iterrows():
         coherence = compute_coherence(config.REDDIT_DATA_DIR, config.TABLE_NAME, config.TFIDF_MAX_FEATURES, config.IDS_FILE, row['Labels'])
-        all_coherences.append(coherence)
         print(f"threshold: { row['Threshold']}, coherence: {coherence}")
+        # all_coherence.append(coherence)
 
-    plt.plot(results_df['Threshold'], all_coherences)
-    plt.savefig('coherence.png')
+    # plt.plot(results_df['Threshold'], all_coherence)
+    # plt.savefig('coherence.png')
+
 

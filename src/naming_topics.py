@@ -19,7 +19,6 @@ import torch
 import json
 
 
-
 def process_topics(tfidf_data, tokenizer, model, device, prompt):
     """Process each topic and generate names using the model."""
     topic_naming = {}

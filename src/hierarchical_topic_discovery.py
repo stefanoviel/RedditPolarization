@@ -6,13 +6,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from logging_config import configure_get_logger
 import config
 
-from cuml.common import logger
-logger.set_level(logger.level_error)
-
-if not os.path.exists(config.OUTPUT_DIR):
-    os.makedirs(config.OUTPUT_DIR)
-logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
-
 from src.utils.function_runner import run_function_with_overrides
 import h5py
 import numpy as np
@@ -25,42 +18,70 @@ import gensim.downloader as api
 from gensim.corpora import Dictionary
 from gensim.utils import simple_preprocess
 
-from src.create_graph import load_graph
-from src.tf_idf import get_cluster_posts, get_important_words
+from src.tf_idf import prepare_documents, TF_IDF_matrix, extract_top_words
 from src.utils.utils import create_database_connection, load_json, load_h5py
+import igraph as ig
 import leidenalg
 from tqdm import tqdm
 import cuml
 
+import numpy as np
+import pandas as pd
+from scipy.cluster.hierarchy import dendrogram, linkage
+from scipy.spatial.distance import squareform
+from scipy.cluster.hierarchy import fcluster
 
-def apply_leiden(graph, resolution_parameter: float) -> list[list[int]]:
-    """Apply the Leiden algorithm to partition a graph."""
-    partition = leidenalg.find_partition(graph, leidenalg.RBConfigurationVertexPartition, resolution_parameter=resolution_parameter)
-    return partition
+from cuml.common import logger
+logger.set_level(logger.level_error)
 
-
-def apply_different_resolution_parameters(graph, resolution_parameters: list[float]) -> list[list[int]]:
-    """Apply the Leiden algorithm to partition a graph with different resolution parameters."""
-    partitions = []
-    for resolution_parameter in resolution_parameters:
-        partition = apply_leiden(graph, resolution_parameter)
-        partitions.append(partition)
-    return partitions
+if not os.path.exists(config.OUTPUT_DIR):
+    os.makedirs(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
 
 
-def merge_clusters(partitions, clusters):
-    """Merge clusters that are part of the same partition."""
 
-    for n_partition, partition in enumerate(partitions):
-        clusters = [cluster if cluster not in partition else n_partition for cluster in clusters]
+def hierarchical_topics_from_similarity(similarity_matrix, topic_labels, linkage_method='average'):
+    """Generate a hierarchy of topics based on a cosine similarity matrix.
 
-    return clusters
+    Arguments:
+        similarity_matrix (np.ndarray): A square matrix where each element represents the cosine similarity between topics.
+        topic_labels (list of str): Labels for each topic corresponding to the indices of the similarity matrix.
+        linkage_method (str): The linkage algorithm to use ('single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward').
+
+    Returns:
+        pd.DataFrame: A DataFrame that contains a hierarchy of topics represented by their parents and their children.
+    """
+    distance_matrix = 1 - similarity_matrix
+    np.fill_diagonal(distance_matrix, 0)
+    condensed_distance_matrix = squareform(distance_matrix)
+    Z = linkage(condensed_distance_matrix, method=linkage_method)
+    plt.figure(figsize=(25, 10))
+    dn = dendrogram(Z, labels=topic_labels, leaf_rotation=90)
+    plt.savefig('dendrogram.png')
+
+    return Z
+
+def compute_cluster_labels_at_each_merge(Z, cluster_order, cluster_per_post):
+    """
+    This function computes the cluster labels for each threshold at which a merge occurs in the hierarchical clustering.
+    """
+    thresholds = np.unique(Z[:, 2])
+
+    results = []
+    for threshold in thresholds:
+        labels = fcluster(Z, t=threshold, criterion='distance')
+        label_map = {old_label: new_label for old_label, new_label in zip(cluster_order, labels)}
+        mapped_labels = [label_map[cluster_label] for cluster_label in cluster_per_post]
+        results.append({'Threshold': threshold, 'Labels': mapped_labels})
+
+    results_df = pd.DataFrame(results)
+    return results_df
 
 
-def main(ADJACENCY_MATRIX: str, REDDIT_DATA_DIR:str , TABLE_NAME:str, TFIDF_MAX_FEATURES:str, IDS_FILE:str, CLUSTER_FILE:str, RESOLUTION_PARAMETER:list) -> None:
-    graph = load_graph(ADJACENCY_MATRIX)
-
+def compute_coherence(REDDIT_DATA_DIR, TABLE_NAME, TFIDF_MAX_FEATURES, IDS_FILE, merged_clusters):
+    
     db_connection = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME,  ["id", "title", "selftext"])
+    ids = load_json(IDS_FILE)
     wiki_corpus = api.load('wiki-english-20171001')
 
     texts = []
@@ -71,49 +92,36 @@ def main(ADJACENCY_MATRIX: str, REDDIT_DATA_DIR:str , TABLE_NAME:str, TFIDF_MAX_
             break
     
     dictionary = Dictionary(texts)
-    
-    for resolution_parameter in RESOLUTION_PARAMETER:
-        print(f"Resolution parameter: {resolution_parameter}")
-        partitions = apply_leiden(graph, resolution_parameter=resolution_parameter)  
-        with h5py.File(CLUSTER_FILE, 'r') as cluster_file:
-            clusters = cluster_file['data'][:]
-        ids = load_json(IDS_FILE)
 
-        merged_clusters = merge_clusters(partitions, clusters)
+    documents, all_clusters = prepare_documents(db_connection, ids, merged_clusters, TABLE_NAME)
+    tfidf_matrix, feature_names = TF_IDF_matrix(documents, TFIDF_MAX_FEATURES)
+    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, all_clusters)
 
-        topics = []
-        for cluster, posts in get_cluster_posts(db_connection, ids, merged_clusters, TABLE_NAME):
-            important_words = [word for word, _ in get_important_words(posts, max_features=TFIDF_MAX_FEATURES)]
-            topics.append(important_words)
-            print(f"Cluster {cluster}: {important_words[:10]}")
+    # extract the top words for each cluster and create a list of string 
+    topics_word = []
+    for cluster in top_words_per_document:
+        topics_word.append(top_words_per_document[cluster])
 
+    cm = CoherenceModel(topics=topics_word, texts=texts, dictionary=dictionary, coherence='c_v')
+    coherence = cm.get_coherence()
+    return coherence
 
-        cm = CoherenceModel(topics=topics, texts=texts, dictionary=dictionary, coherence='c_v')
-        coherence = cm.get_coherence()
-        print(f"resolution_parameter: {resolution_parameter}, coherence: {coherence}")  
-
-def cluster_centroids(CENTROID_POISITION: str, TFIDF_FILE : str) -> None:
-
-    centroids = load_h5py(CENTROID_POISITION, "centroids")
-    unique_clusters = load_h5py(CENTROID_POISITION, "unique_clusters")
-
-    reducer = cuml.UMAP(
-        n_neighbors=3, n_components=2, min_dist=0
-    )
-    coordinates = reducer.fit_transform(centroids)
-
-    plt.scatter(coordinates[:, 0], coordinates[:, 1])
-    for i, txt in enumerate(unique_clusters):
-        plt.annotate(txt, (coordinates[i, 0], coordinates[i, 1]))
-    #save the plot
-    plt.savefig('output/centroid_clusters.png')
-
-    scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=1, min_samples=1)
-    clusters = scanner.fit_predict(coordinates)
-
-    for original_cluster, new_cluster in zip(unique_clusters, clusters):
-        print(f"Cluster {original_cluster} -> {new_cluster}")
         
-
 if __name__ == "__main__":
-    run_function_with_overrides(cluster_centroids, config)
+    # run_function_with_overrides(main, config)
+
+    adjacency_matrix_file = load_h5py(config.ADJACENCY_MATRIX, 'data') 
+    cluster_order = load_json(config.CLUSTER_ORDER)['cluster_order']
+    cluster_id_per_post = load_h5py(config.CLUSTER_FILE, 'data')
+    Z = hierarchical_topics_from_similarity(adjacency_matrix_file, cluster_order)
+    results_df = compute_cluster_labels_at_each_merge(Z, cluster_order, cluster_id_per_post)
+    
+    all_coherences = []
+    for index, row in results_df.iterrows():
+        coherence = compute_coherence(config.REDDIT_DATA_DIR, config.TABLE_NAME, config.TFIDF_MAX_FEATURES, config.IDS_FILE, row['Labels'])
+        all_coherences.append(coherence)
+        print(f"threshold: { row['Threshold']}, coherence: {coherence}")
+
+    plt.plot(results_df['Threshold'], all_coherences)
+    plt.savefig('coherence.png')
+

@@ -68,7 +68,7 @@ PROMPT = """ Given the following lists of words, each associated with a cluster 
 
     """
 
-# graph
+# hierarchical topic discovery
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")
 CLUSTER_ORDER = os.path.join(OUTPUT_DIR, "cluster_order.json")
-RESOLUTION_PARAMETER = [1.8, 2, 2.5, 3]
+RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]

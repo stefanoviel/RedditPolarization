@@ -11,13 +11,11 @@ if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
 logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__, log_level='INFO')
 
-
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 from src.utils.utils import load_json, format_prompt, create_tokenized_prompt, generate_response, save_json_file, load_model_and_tokenizer
 
 import torch
 import json
-
 
 def process_topics(tfidf_data, tokenizer, model, device, prompt):
     """Process each topic and generate names using the model."""

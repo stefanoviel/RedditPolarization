@@ -25,7 +25,6 @@ if not os.path.exists(config.OUTPUT_DIR):
 logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__, log_level='INFO')
 
 
-
 def get_cluster_posts(con: duckdb.DuckDBPyConnection, ids:list, clusters:list, TABLE_NAME:str):
     """
     Yield the title and selftext for each cluster by executing a database query for each cluster.
@@ -49,6 +48,8 @@ def extract_top_words(tfidf_matrix, feature_names, all_clusters, top_n=10):
     """Extract top words for each document."""
     top_words_per_document = {}
     for doc_index in tqdm(range(tfidf_matrix.shape[0])):
+        if doc_index > 2: 
+            break
         row = tfidf_matrix.getrow(doc_index)
         indices = row.indices
         data = row.data
@@ -94,7 +95,7 @@ def prepare_documents(con: duckdb.DuckDBPyConnection, ids: list, clusters: list,
     all_clusters = []
     for cluster, posts in tqdm(get_cluster_posts(con, ids, clusters, table_name), total=len(set(clusters))):
         all_clusters.append(int(cluster))
-        cluster_words = " ".join([title + " " + selftext for title, selftext in posts[:1000]]) 
+        cluster_words = " ".join([title + " " + selftext for title, selftext in posts[:1000]])   # TODO: remove
         all_words.append(cluster_words)
     return pd.Series(all_words), all_clusters
 
@@ -119,11 +120,10 @@ def main(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_FILE:str, TF
 
     con, ids, clusters = load_data(REDDIT_DATA_DIR, TABLE_NAME, CLUSTER_FILE, IDS_FILE)
     documents, all_clusters = prepare_documents(con, ids, clusters, TABLE_NAME) 
-    tfidf_matrix, feature_names, all_clusters = TF_IDF_matrix(documents, TFIDF_MAX_FEATURES)
+    tfidf_matrix, feature_names = TF_IDF_matrix(documents, TFIDF_MAX_FEATURES)
     adjacency_matrix = compute_adjacency_matrix(tfidf_matrix, all_clusters)
     save_h5py(adjacency_matrix, ADJACENCY_MATRIX, "data")
     save_json({"cluster_order": list(all_clusters)}, CLUSTER_ORDER)
-
 
     top_words_per_document = extract_top_words(tfidf_matrix, feature_names, all_clusters)
     save_json(top_words_per_document, TFIDF_FILE)

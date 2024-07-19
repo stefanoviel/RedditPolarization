@@ -42,7 +42,7 @@ MINIMUM_PERCENTAGE_NON_NOISE = 0.68
 
 # tfidf
 TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
-TFIDF_WORDS_PER_CLUSTER = 10
+TFIDF_WORDS_PER_CLUSTER = 50
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
 

@@ -31,6 +31,8 @@ import igraph as ig
 import leidenalg
 from tqdm import tqdm
 import cuml
+import pickle
+from gensim import corpora
 
 import numpy as np
 import pandas as pd
@@ -78,24 +80,48 @@ def compute_cluster_labels_at_each_merge(Z, cluster_order, cluster_per_post):
     results_df = pd.DataFrame(results)
     return results_df
 
+def create_load_corpus_dictionary(corpus_path, texts_path='data/texts.pkl', dict_path='data/dictionary.pkl'):
+    # Check if both the texts and dictionary files exist
+    if os.path.exists(texts_path) and os.path.exists(dict_path):
+        # Load texts
+        with open(texts_path, 'rb') as file:
+            texts = pickle.load(file)
+        # Load dictionary
+        dictionary = Dictionary.load(dict_path)
+    else:
+        # Load or download the wiki corpus if not already done
+        wiki_corpus = api.load(corpus_path)
+
+        texts = []
+        # Process the texts
+        for n, text in tqdm(enumerate(wiki_corpus)):  # process only the first 500,001 documents
+            processed_text = [simple_preprocess(line) for line in text]
+            texts.extend(processed_text)
+
+
+        # Create a dictionary
+        dictionary = Dictionary(texts)
+        # Save texts to a file using pickle
+        with open(texts_path, 'wb') as file:
+            pickle.dump(texts, file)
+        # Save dictionary to a file
+        dictionary.save(dict_path)
+    
+    return texts, dictionary
+
 
 def compute_coherence(REDDIT_DATA_DIR, TABLE_NAME, TFIDF_MAX_FEATURES, IDS_FILE, merged_clusters):
     
     db_connection = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME,  ["id", "title", "selftext"])
     ids = load_json(IDS_FILE)
-    wiki_corpus = api.load('wiki-english-20171001')
 
-    texts = []
-    for n, text in tqdm(enumerate(wiki_corpus)): 
-        for string in text['section_texts']:
-            texts.append(simple_preprocess(string))
-        if n > 10: # TODO: remove, I'm considering only the first 10 corpus from wikipedia to speed up the process
-            break
-    
-    dictionary = Dictionary(texts)
+    texts, dictionary = create_load_corpus_dictionary('wiki-english-20171001')
 
+    print("Preparing documents...")
     documents, all_clusters = prepare_documents(db_connection, ids, merged_clusters, TABLE_NAME)
+    print("Computing TF-IDF matrix...")
     tfidf_matrix, feature_names = TF_IDF_matrix(documents, TFIDF_MAX_FEATURES)
+    print("Computing top words per document...")
     top_words_per_document = extract_top_words(tfidf_matrix, feature_names, all_clusters)
 
     # extract the top words for each cluster and create a list of string 
@@ -103,9 +129,10 @@ def compute_coherence(REDDIT_DATA_DIR, TABLE_NAME, TFIDF_MAX_FEATURES, IDS_FILE,
     for cluster in top_words_per_document:
         topics_word.append(top_words_per_document[cluster])
 
-    cm = CoherenceModel(topics=topics_word, texts=texts, dictionary=dictionary, coherence='c_v')
+    print(topics_word)
+    cm = CoherenceModel(topics=topics_word, texts=texts, dictionary=dictionary, coherence='u_mass')
     coherence = cm.get_coherence()
-    return coherence
+    return coherence, top_words_per_document
 
         
 if __name__ == "__main__":
@@ -117,14 +144,16 @@ if __name__ == "__main__":
     Z = hierarchical_topics_from_similarity(adjacency_matrix_file, cluster_order)
     results_df = compute_cluster_labels_at_each_merge(Z, cluster_order, cluster_id_per_post)
 
-    # all_coherence = []
-    
+    all_coherence = []
     for index, row in results_df.iterrows():
-        coherence = compute_coherence(config.REDDIT_DATA_DIR, config.TABLE_NAME, config.TFIDF_MAX_FEATURES, config.IDS_FILE, row['Labels'])
+        coherence, top_words_per_document = compute_coherence(config.REDDIT_DATA_DIR, config.TABLE_NAME, config.TFIDF_MAX_FEATURES, config.IDS_FILE, row['Labels'])
         print(f"threshold: { row['Threshold']}, coherence: {coherence}")
-        # all_coherence.append(coherence)
+        all_coherence.append(coherence)
 
-    # plt.plot(results_df['Threshold'], all_coherence)
-    # plt.savefig('coherence.png')
+        if index > 2: 
+            break
+
+    plt.plot(results_df['Threshold'], all_coherence)
+    plt.savefig('coherence.png')
 
 

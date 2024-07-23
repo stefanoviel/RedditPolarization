@@ -60,7 +60,6 @@ def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
 
     return top_words_per_document
 
-
 def compute_adjacency_matrix(tfidf_matrix, all_clusters):
     """Compute the adjacency matrix fo the cosine similarity between all clusters."""
     adjacency_matrix = np.zeros((len(all_clusters), len(all_clusters)))
@@ -112,7 +111,7 @@ def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
 
     return tfidf_matrix, feature_names
 
-def main(REDDIT_DATA_DIR:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int):
+def run_tf_idf(REDDIT_DATA_DIR:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int):
     """Main function to compute the TF-IDF matrix and adjacency matrix."""
 
     con, ids, clusters = load_data(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME)
@@ -132,7 +131,7 @@ if __name__ == "__main__":
 
     # config.CLUSTER_FILE = config.SUBCLUSTER_FILE
     # config.TFIDF_FILE = config.SUBCLUSTER_TFIDF_FILE
-    print("Total running time:", run_function_with_overrides(main, config))
+    print("Total running time:", run_function_with_overrides(run_tf_idf, config))
 
 
 

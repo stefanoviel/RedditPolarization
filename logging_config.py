@@ -52,7 +52,8 @@ def configure_get_logger(output_dir: str, experiment_name:str, log_level: str = 
 
     logger_name = os.path.splitext(os.path.basename(executed_file_name))[0]
     current_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    log_file_name = f"{logger_name}_{current_time}.log"
+    # log_file_name = f"{logger_name}_{current_time}.log"
+    log_file_name = f"app.log"
 
     log_dir = os.path.join(output_dir, "logs")
     if not os.path.exists(log_dir):

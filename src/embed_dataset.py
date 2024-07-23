@@ -20,7 +20,7 @@ from tqdm import tqdm
 import langid
 
 from src.utils.utils import create_database_connection
-from src.utils.function_runner import run_function_with_overrides
+from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
     
 
 def initialize_model(model_name:str) -> SentenceTransformer:
@@ -145,7 +145,7 @@ def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME
         texts, batch_ids = prepare_texts_and_ids(batch)
         
         if texts is not None:
-            embeddings = generate_embeddings(model, texts)
+            embeddings = execute_with_gpu_logging(generate_embeddings, model, texts)
 
             if h5_file is None:
                 h5_file = initialize_h5_file(PROCESSED_REDDIT_DATA, embeddings.shape[1], EMBEDDING_DB_NAME, IDS_DB_NAME)

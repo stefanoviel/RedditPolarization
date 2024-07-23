@@ -18,6 +18,8 @@ import logging
 import time
 from functools import wraps
 
+
+
 def get_gpu_memory():
     """Function to get the current GPU memory usage."""
     try:
@@ -73,7 +75,7 @@ def execute_with_gpu_logging(func, *args, **kwargs):
     for gpu_id in initial_mem.keys():
         memory_used = final_mem[gpu_id] - initial_mem[gpu_id]
         if memory_used > 0:
-            logging.info(f"GPU {gpu_id}: {final_mem}MB of GPU memory were filled after running {func.__name__} and it  took {end_time - start_time:.2f}s")
+            logger.info(f"GPU {gpu_id}: {final_mem}MB of GPU memory were filled after running {func.__name__} and it  took {end_time - start_time:.2f}s")
     
     return result
 

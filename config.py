@@ -7,8 +7,9 @@ OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
-# where to get the data from
+# datasets names
 REDDIT_DATA_DIR = 'data/parquet'
+H5_FILE = os.path.join(OUTPUT_DIR, "reddit_data.h5")
 
 # Database configuration and parameters for filtering
 TABLE_NAME = 'submissions'

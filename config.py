@@ -38,7 +38,6 @@ SUBCLUSTER_FILE = os.path.join(OUTPUT_DIR, "subclusters.h5")
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
 PARTIAL_FIT_CLUSTER = 0.1
-MINIMUM_PERCENTAGE_NON_NOISE = 0.68
 
 # tfidf
 TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation

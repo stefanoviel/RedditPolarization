@@ -25,13 +25,13 @@ if not os.path.exists(config.OUTPUT_DIR):
 logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__, log_level='INFO')
 
 
-def get_cluster_posts(con: duckdb.DuckDBPyConnection, ids:list, clusters:list, TABLE_NAME:str):
+def get_cluster_posts(con: duckdb.DuckDBPyConnection, ids:list, cluster_of_all_posts:list, TABLE_NAME:str):
     """
-    Yield the title and selftext for each cluster by executing a database query for each cluster.
+    Yield the title and selftext for all the posts in each cluster by executing a database query for each cluster.
     """
     # Map IDs to their clusters, assuming clusters and IDs are in the same order
     cluster_to_ids = {}
-    for id, cluster in zip(ids, clusters):
+    for id, cluster in zip(ids, cluster_of_all_posts):
         if cluster not in cluster_to_ids:
             cluster_to_ids[cluster] = []
         cluster_to_ids[cluster].append(id)
@@ -44,22 +44,20 @@ def get_cluster_posts(con: duckdb.DuckDBPyConnection, ids:list, clusters:list, T
         posts = cursor.fetchall()
         yield cluster, posts
 
-def extract_top_words(tfidf_matrix, feature_names, all_clusters, top_n=10):
-    """Extract top words for each document."""
+def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
+    """Extract top words for each document (cluster in our case) from the tfidf matrix."""
     top_words_per_document = {}
-    for doc_index in tqdm(range(tfidf_matrix.shape[0])):
-        if doc_index > 2: 
-            break
-        row = tfidf_matrix.getrow(doc_index)
+    for cluster_index in tqdm(range(tfidf_matrix.shape[0])):
+        row = tfidf_matrix.getrow(cluster_index)
         indices = row.indices
         data = row.data
         top_indices = np.argpartition(data, -top_n)[-top_n:]
         top_indices_sorted = top_indices[np.argsort(data[top_indices])[::-1]]
         original_indices = indices[top_indices_sorted]
         top_features = [feature_names[ind] for ind in original_indices]
-        cluster_key = str(all_clusters[doc_index])
-
+        cluster_key = str(unique_clusters[cluster_index])
         top_words_per_document[cluster_key] = top_features
+
     return top_words_per_document
 
 
@@ -76,7 +74,7 @@ def compute_adjacency_matrix(tfidf_matrix, all_clusters):
     return adjacency_matrix
 
 
-def prepare_documents(con: duckdb.DuckDBPyConnection, ids: list, clusters: list, table_name: str) -> pd.Series:
+def prepare_documents(iterator_cluster_posts: iter) -> pd.Series:
     """
     Generate and return a list of document strings aggregated by cluster and a list of corresponding cluster identifiers.
 
@@ -91,13 +89,13 @@ def prepare_documents(con: duckdb.DuckDBPyConnection, ids: list, clusters: list,
                  from posts within the same cluster.
     - list[int]: A list of integers representing the unique cluster identifiers for which documents were generated.
     """
-    all_words = []
-    all_clusters = []
-    for cluster, posts in tqdm(get_cluster_posts(con, ids, clusters, table_name), total=len(set(clusters))):
-        all_clusters.append(int(cluster))
-        cluster_words = " ".join([title + " " + selftext for title, selftext in posts[:1000]])   # TODO: remove
-        all_words.append(cluster_words)
-    return pd.Series(all_words), all_clusters
+    all_text_per_cluster = []
+    unique_clusters = []
+    for cluster, posts in tqdm(iterator_cluster_posts):
+        unique_clusters.append(int(cluster))
+        cluster_words = " ".join([title + " " + selftext for title, selftext in posts])
+        all_text_per_cluster.append(cluster_words)
+    return pd.Series(all_text_per_cluster), unique_clusters
 
 def load_data(REDDIT_DATA_DIR, TABLE_NAME, CLUSTER_FILE, IDS_FILE):
     # Create a database connection
@@ -114,18 +112,18 @@ def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
 
     return tfidf_matrix, feature_names
 
-
-def main(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_FILE:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, CLUSTER_ORDER:str):
+def main(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_FILE:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, CLUSTER_ORDER:str, TFIDF_WORDS_PER_CLUSTER:int):
     """Main function to compute the TF-IDF matrix and adjacency matrix."""
 
     con, ids, clusters = load_data(REDDIT_DATA_DIR, TABLE_NAME, CLUSTER_FILE, IDS_FILE)
-    documents, all_clusters = prepare_documents(con, ids, clusters, TABLE_NAME) 
+    iterator_cluster_documents = get_cluster_posts(con, ids, clusters, TABLE_NAME)
+    documents, all_clusters = prepare_documents(iterator_cluster_documents) 
     tfidf_matrix, feature_names = TF_IDF_matrix(documents, TFIDF_MAX_FEATURES)
     adjacency_matrix = compute_adjacency_matrix(tfidf_matrix, all_clusters)
     save_h5py(adjacency_matrix, ADJACENCY_MATRIX, "data")
     save_json({"cluster_order": list(all_clusters)}, CLUSTER_ORDER)
 
-    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, all_clusters)
+    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, all_clusters, TFIDF_WORDS_PER_CLUSTER)
     save_json(top_words_per_document, TFIDF_FILE)
 
 

@@ -26,74 +26,43 @@ os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-from src.utils.utils import load_h5py
-
-
-def UMAP_fit_transform(embedding_filename, n_neighbors, n_components, min_dist):
-
-    features = load_h5py(embedding_filename, "data")
-
-    reducer = cuml.UMAP(
-        n_neighbors=n_neighbors, n_components=n_components, min_dist=min_dist
-    )
-    coordinates = reducer.fit_transform(features)
-
-    return coordinates
-
-
-def save_umap_coordinates(coordinates, output_filename):
-    """
-    Save UMAP coordinates to an HDF5 file.
-    """
-    with h5py.File(output_filename, "w") as file:
-        file.create_dataset("data", data=coordinates)
-
-def random_baseline(EMBEDDINGS_FILE, UMAP_COMPONENTS, DIMENSIONALITY_REDUCTION_FILE):
-    print("Running random baseline")
-    features = load_h5py(EMBEDDINGS_FILE, "data")
-    random_projection = np.random.rand(features.shape[1], UMAP_COMPONENTS)
-    save_umap_coordinates(random_projection, DIMENSIONALITY_REDUCTION_FILE)
-
-
+from src.utils.utils import load_h5py, load_with_indices_h5py, get_indices_for_random_h5py_subset, save_h5py
 
 def UMAP_transform_full_fit(
-    EMBEDDINGS_FILE,
-    UMAP_N_Neighbors,
-    UMAP_COMPONENTS,
-    UMAP_MINDIST,
-    DIMENSIONALITY_REDUCTION_FILE,
+    PROCESSED_REDDIT_DATA: str,
+    UMAP_N_Neighbors: int,
+    UMAP_COMPONENTS: int,
+    UMAP_MINDIST: float,
 ):
     """
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
 
-    features = load_h5py(EMBEDDINGS_FILE, "data")
+    features = load_h5py(PROCESSED_REDDIT_DATA, "embeddings")
     local_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,
         min_dist=UMAP_MINDIST,
     )
     transformed = local_model.fit_transform(features)
-    save_umap_coordinates(transformed, DIMENSIONALITY_REDUCTION_FILE)
+    save_h5py(transformed, PROCESSED_REDDIT_DATA, "umap_coordinates")
 
 
 def UMAP_transform_partial_fit(
-    EMBEDDINGS_FILE,
-    UMAP_N_Neighbors,
-    UMAP_COMPONENTS,
-    UMAP_MINDIST,
-    PARTIAL_FIT_DIM_REDUCTION,
-    DIMENSIONALITY_REDUCTION_FILE,
-    NEGATIVE_SAMPLE_RATE,
-    UMAP_N_EPOCHS,
-):
+    PROCESSED_REDDIT_DATA: str,
+    UMAP_N_Neighbors: int,
+    UMAP_COMPONENTS: int,
+    UMAP_MINDIST: float,
+    PARTIAL_FIT_DIM_REDUCTION: float,
+    NEGATIVE_SAMPLE_RATE: int,
+    UMAP_N_EPOCHS: int,
+) -> None:
+    
     """
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
-    
-    features = load_h5py(EMBEDDINGS_FILE, "data")
 
-    local_model = UMAP(
+    umap_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,
         min_dist=UMAP_MINDIST,
@@ -101,35 +70,28 @@ def UMAP_transform_partial_fit(
         n_epochs=UMAP_N_EPOCHS
     )
 
-    sampled_indices = np.random.choice(
-        features.shape[0], int(features.shape[0] * PARTIAL_FIT_DIM_REDUCTION), replace=False
-    )
-    
-    logger.info(f"Fitting UMAP on {len(sampled_indices)} samples")
-    sampled_features = features[sampled_indices]
-    
-    execute_with_gpu_logging(local_model.fit, sampled_features)
+    partial_fit_indices, total_samples, num_samples = get_indices_for_random_h5py_subset(PROCESSED_REDDIT_DATA, "embeddings", PARTIAL_FIT_DIM_REDUCTION)
 
-    subset_size = len(sampled_indices)
+    sampled_features = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", partial_fit_indices)
+    
+    execute_with_gpu_logging(umap_model.fit, sampled_features)
 
     # iterate over the rest of the data in chunks of subset_size and transform
     # subset size (derived from PARTIAL_FIT_DIM_REDUCTION) should be the maximum subset of data on which we can fit
-    # given a certain GPU memory
-
+    # given a certain GPU memory 
     result = None
-    for i in tqdm(range(0, features.shape[0], subset_size)):
-        chunk = features[i : i + subset_size]
-        transformed_chunk = execute_with_gpu_logging(local_model.transform, chunk)
+    for i in tqdm(range(0, total_samples - num_samples, num_samples)):
+        indices = np.arange(i, i + num_samples)
+        chunk = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", indices)
+        transformed_chunk = execute_with_gpu_logging(umap_model.transform, chunk)
         if result is None:
             result = transformed_chunk
         else:
             result = np.concatenate((result, transformed_chunk), axis=0)
 
-    save_umap_coordinates(result, DIMENSIONALITY_REDUCTION_FILE)
-
-
+    save_h5py(result, PROCESSED_REDDIT_DATA, "umap_coordinates")
 
 
 if __name__ == "__main__":
 
-    run_function_with_overrides(UMAP_transform_partial_fit, config)
+    print("Total running time:", run_function_with_overrides(UMAP_transform_partial_fit, config))

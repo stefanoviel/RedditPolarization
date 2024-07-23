@@ -15,6 +15,27 @@ def load_h5py(file_path: str, db_name:str) -> np.ndarray:
         embeddings = file[db_name][:]
     return embeddings
 
+def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray) -> np.ndarray:
+    """
+    Load specific indices from an HDF5 file into a NumPy array.
+    """
+    with h5py.File(file_path, "r") as file:
+        dataset = file[db_name]
+        return dataset[indices]
+    
+
+def get_indices_for_random_h5py_subset(PROCESSED_REDDIT_DATA: str, dataset_name, PARTIAL_FIT_DIM_REDUCTION: float):
+
+    with h5py.File(PROCESSED_REDDIT_DATA, "r") as file:
+        dataset = file[dataset_name]
+        total_samples = dataset.shape[0]
+        num_samples = int(total_samples * PARTIAL_FIT_DIM_REDUCTION)
+
+        partial_fit_indices = np.random.choice(total_samples, num_samples, replace=False)
+        partial_fit_indices.sort()
+
+    return partial_fit_indices, total_samples, num_samples
+
 def save_h5py(data: np.ndarray, file_path: str, db_name:str):
     """
     Save a NumPy array to an HDF5 file.

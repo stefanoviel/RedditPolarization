@@ -9,7 +9,7 @@ if not os.path.exists(OUTPUT_DIR):
 
 # datasets names
 REDDIT_DATA_DIR = 'data/parquet'
-H5_FILE = os.path.join(OUTPUT_DIR, "reddit_data.h5")
+PROCESSED_REDDIT_DATA = os.path.join(OUTPUT_DIR, "reddit_data.h5")
 
 # Database configuration and parameters for filtering
 TABLE_NAME = 'submissions'

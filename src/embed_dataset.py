@@ -133,7 +133,7 @@ def initialize_h5_file(file_path: str, embedding_dim: int):
     return file_path
 
 
-def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, H5_FILE: str, MIN_SCORE: int, MIN_POST_LENGTH: int):
+def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, PROCESSED_REDDIT_DATA: str, MIN_SCORE: int, MIN_POST_LENGTH: int):
     """Fetch data in batches from db, generate embeddings, and save them incrementally along with their corresponding IDs."""
     model = initialize_model(MODEL_NAME)
     con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"])
@@ -148,61 +148,19 @@ def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME
             embeddings = generate_embeddings(model, texts)
 
             if h5_file is None:
-                h5_file = initialize_h5_file(H5_FILE, embeddings.shape[1])
+                h5_file = initialize_h5_file(PROCESSED_REDDIT_DATA, embeddings.shape[1])
             
             append_to_h5(h5_file, embeddings, batch_ids)
             total_processed += len(batch_ids)
             
             logger.info(f"Processed {total_processed} items")
 
-    logger.info(f"Embeddings and IDs saved to {H5_FILE}")
+    logger.info(f"Embeddings and IDs saved to {PROCESSED_REDDIT_DATA}")
     logger.info(f"Total items processed: {total_processed}")
 
-    with h5py.File(H5_FILE, "r") as f:
+    with h5py.File(PROCESSED_REDDIT_DATA, "r") as f:
         logger.info(f"Final shape of the embeddings dataset: {f['embeddings'].shape}")
         logger.info(f"Final shape of the IDs dataset: {f['ids'].shape}")
-
-# def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, EMBEDDINGS_FILE: str, IDS_FILE: str, MIN_SCORE: int, MIN_POST_LENGTH: int):
-#     """Fetch data in batches from db, generate embeddings, and save them incrementally along with their corresponding IDs."""
-#     model = initialize_model(MODEL_NAME)
-#     con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"])
-
-#     tot_rows, rows_to_embed = count_rows_to_embed(con, TABLE_NAME, MIN_SCORE, MIN_POST_LENGTH)
-#     logger.info(f"Total rows to embed: {tot_rows:,}, filtered rows: {rows_to_embed[0][0]:,}")
-
-#     # Open the HDF5 file for writing embeddings and prepare a list for IDs
-#     with h5py.File(EMBEDDINGS_FILE, "w") as f:
-#         data_initialized = False
-#         embeddings_dataset = None
-#         ids = []
-        
-#         for batch in fetch_data_in_batches(con, TABLE_NAME, MODEL_BATCH_SIZE, MIN_SCORE, MIN_POST_LENGTH):
-#             texts, batch_ids = prepare_texts_and_ids(batch)
-
-#             if texts:
-#                 embeddings = generate_embeddings(model, texts)
-
-#                 if not data_initialized:
-#                     num_embeddings, embedding_dim = embeddings.shape
-#                     embeddings_maxshape = (None, embedding_dim)
-#                     embeddings_dataset = f.create_dataset("data", shape=(0, embedding_dim), maxshape=embeddings_maxshape, dtype='float32', chunks=True)
-#                     data_initialized = True
-
-#                 current_shape = embeddings_dataset.shape
-#                 new_shape = (current_shape[0] + embeddings.shape[0], embedding_dim)
-#                 embeddings_dataset.resize(new_shape)
-#                 embeddings_dataset[current_shape[0]:new_shape[0], :] = embeddings
-
-#                 ids.extend(batch_ids)  # Append new IDs to the list
-
-#         # Once all data is processed, save IDs to a JSON file
-#         with open(IDS_FILE, 'w') as id_file:
-#             json.dump(ids, id_file)
-
-#         logger.info(f"shape of the embeddings dataset: {embeddings_dataset.shape}")
-#         logger.info(f"Embeddings saved to {EMBEDDINGS_FILE}")
-#         logger.info(f"IDs saved to {IDS_FILE}")
-
 
 
 

@@ -24,23 +24,27 @@ def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray) ->
         return dataset[indices]
     
 
-def get_indices_for_random_h5py_subset(PROCESSED_REDDIT_DATA: str, dataset_name, PARTIAL_FIT_DIM_REDUCTION: float):
+def get_indices_for_random_h5py_subset(filename: str, dataset_name, subset_fraction: float):
+    """Extract data points corresponding to indices"""
 
-    with h5py.File(PROCESSED_REDDIT_DATA, "r") as file:
+    with h5py.File(filename, "r") as file:
         dataset = file[dataset_name]
         total_samples = dataset.shape[0]
-        num_samples = int(total_samples * PARTIAL_FIT_DIM_REDUCTION)
+        num_samples = int(total_samples * subset_fraction)
 
         partial_fit_indices = np.random.choice(total_samples, num_samples, replace=False)
         partial_fit_indices.sort()
 
     return partial_fit_indices, total_samples, num_samples
 
-def save_h5py(data: np.ndarray, file_path: str, db_name:str):
+def save_h5py(data: np.ndarray, file_path: str, db_name: str):
     """
-    Save a NumPy array to an HDF5 file.
+    Save a NumPy array to an HDF5 file without deleting existing datasets.
     """
-    with h5py.File(file_path, "w") as file:
+    with h5py.File(file_path, "a") as file:  # Changed "w" to "a" to prevent deletion of existing data
+        # Check if dataset exists and delete if it does to prevent error on creation
+        if db_name in file:
+            del file[db_name]
         file.create_dataset(db_name, data=data)
 
 def load_json(file_path):

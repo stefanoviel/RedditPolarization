@@ -181,6 +181,6 @@ if __name__ == "__main__":
     cluster_order = load_json(config.CLUSTER_ORDER)['cluster_order']
     cluster_id_per_post = load_h5py(config.CLUSTER_FILE, 'data')
     Z = hierarchical_topics_from_similarity(adjacency_matrix_file, cluster_order)
-    thresholds = find_optimal_threshold(Z, config.REDDIT_DATA_DIR, config.TABLE_NAME, config.TFIDF_MAX_FEATURES, config.IDS_FILE, len(cluster_order))
+    thresholds = find_optimal_threshold(Z, config.REDDIT_DATA_DIR, config.TABLE_NAME, config.TFIDF_MAX_FEATURES, config.IDS_DB_NAME, len(cluster_order))
 
 

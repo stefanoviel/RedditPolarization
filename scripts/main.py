@@ -9,7 +9,7 @@ import time
 
 from src.embed_dataset import create_and_save_embeddings
 from src.dimensionality_reduction import UMAP_transform_partial_fit
-from src.clustering import hdbscan_clusters
+from src.clustering import hdbscan_cluster_data
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import find_save_important_words
 
@@ -22,7 +22,7 @@ def main():
 
     time_embeddings = run_function_with_overrides(create_and_save_embeddings, config)
     time_umap = run_function_with_overrides(UMAP_transform_partial_fit, config)
-    time_hdbscan = run_function_with_overrides(hdbscan_clusters, config)
+    time_hdbscan = run_function_with_overrides(hdbscan_cluster_data, config)
     time_tfidf = run_function_with_overrides(find_save_important_words, config)
 
 

@@ -17,14 +17,14 @@ MIN_SCORE = 10
 MIN_POST_LENGTH = 40
 
 # Embeddings 
-EMBEDDINGS_FILE = os.path.join(OUTPUT_DIR, "embeddings.h5")
-IDS_FILE = os.path.join(OUTPUT_DIR, "ids.json")
+EMBEDDING_DB_NAME = "embeddings"
+IDS_DB_NAME = "ids"
 MODEL_NAME = 'all-MiniLM-L6-v2' 
 # number of samples to load on the gpu at once 
 MODEL_BATCH_SIZE = 320_000  
 
 # Dimensionality reduction 
-DIMENSIONALITY_REDUCTION_FILE = os.path.join(OUTPUT_DIR, "dimensional_reduction.h5")
+DIMENSIONALITY_REDUCTION_DB_NAME = "dimensional_reduction"
 UMAP_COMPONENTS = 5
 UMAP_N_Neighbors = 4 # increase this to get more global structure
 UMAP_MINDIST = 0
@@ -34,11 +34,13 @@ LEARNING_RATE = 1.0
 UMAP_N_EPOCHS = 500
 
 # clustering 
-CLUSTER_FILE =  os.path.join(OUTPUT_DIR, "clusters.h5")
-SUBCLUSTER_FILE = os.path.join(OUTPUT_DIR, "subclusters.h5")
+CLUSTER_DB_NAME =  "clusters"
+SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
-PARTIAL_FIT_CLUSTER = 0.1
+HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH = [0.0001, 0.001, 0.001, 0.01, 0.05]
+HDBS_MIN_SAMPLES_SEARCH = [2, 5, 10, 20, 50]
+PARTIAL_FIT_CLUSTER = 0.1  # it might not be used, depending on the employed function
 
 # tfidf
 TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
@@ -70,5 +72,4 @@ PROMPT = """ Given the following lists of words, each associated with a cluster 
 
 # hierarchical topic discovery
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")
-CLUSTER_ORDER = os.path.join(OUTPUT_DIR, "cluster_order.json")
 RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]

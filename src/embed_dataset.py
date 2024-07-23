@@ -109,11 +109,11 @@ def fetch_data_in_batches(con, table_name:str, batch_size: int, min_score: int, 
             break
         yield batch
 
-def append_to_h5(file_path: str, embeddings, ids):
+def append_ids_embeddings_to_h5(file_path: str, embeddings: torch.Tensor, ids: list[int], embeddings_db_name: str, ids_db_name: str) -> None:
     """Append embeddings and IDs to the H5 file."""
     with h5py.File(file_path, "a") as f:
-        embed_dset = f["embeddings"]
-        ids_dset = f["ids"]
+        embed_dset = f[embeddings_db_name]
+        ids_dset = f[ids_db_name]
         
         current_size = embed_dset.shape[0]
         new_size = current_size + embeddings.shape[0]
@@ -125,15 +125,15 @@ def append_to_h5(file_path: str, embeddings, ids):
         ids_dset[current_size:new_size] = ids
 
 
-def initialize_h5_file(file_path: str, embedding_dim: int):
+def initialize_h5_file(file_path: str, embedding_dim: int, embeddings_db_name: str, ids_db_name: str) -> str:
     """Initialize the H5 file with datasets for embeddings and IDs."""
     with h5py.File(file_path, "w") as f:
-        f.create_dataset("embeddings", shape=(0, embedding_dim), maxshape=(None, embedding_dim), dtype='float32', chunks=True)
-        f.create_dataset("ids", shape=(0,), maxshape=(None,), dtype=h5py.string_dtype(encoding='utf-8'), chunks=True)
+        f.create_dataset(embeddings_db_name, shape=(0, embedding_dim), maxshape=(None, embedding_dim), dtype='float32', chunks=True)
+        f.create_dataset(ids_db_name, shape=(0,), maxshape=(None,), dtype=h5py.string_dtype(encoding='utf-8'), chunks=True)
     return file_path
 
 
-def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, PROCESSED_REDDIT_DATA: str, MIN_SCORE: int, MIN_POST_LENGTH: int):
+def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, PROCESSED_REDDIT_DATA: str, MIN_SCORE: int, MIN_POST_LENGTH: int, EMBEDDING_DB_NAME:str, IDS_DB_NAME:str):
     """Fetch data in batches from db, generate embeddings, and save them incrementally along with their corresponding IDs."""
     model = initialize_model(MODEL_NAME)
     con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"])
@@ -148,9 +148,9 @@ def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME
             embeddings = generate_embeddings(model, texts)
 
             if h5_file is None:
-                h5_file = initialize_h5_file(PROCESSED_REDDIT_DATA, embeddings.shape[1])
+                h5_file = initialize_h5_file(PROCESSED_REDDIT_DATA, embeddings.shape[1], EMBEDDING_DB_NAME, IDS_DB_NAME)
             
-            append_to_h5(h5_file, embeddings, batch_ids)
+            append_ids_embeddings_to_h5(h5_file, embeddings, batch_ids, EMBEDDING_DB_NAME, IDS_DB_NAME)
             total_processed += len(batch_ids)
             
             logger.info(f"Processed {total_processed} items")

@@ -97,42 +97,43 @@ def prepare_documents(iterator_cluster_posts: iter) -> pd.Series:
         all_text_per_cluster.append(cluster_words)
     return pd.Series(all_text_per_cluster), unique_clusters
 
-def load_data(REDDIT_DATA_DIR, TABLE_NAME, CLUSTER_FILE, IDS_FILE):
+def load_data(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME):
     # Create a database connection
     con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["id", "title", "selftext"])
-    ids = load_json(IDS_FILE)
-    clusters = load_h5py(CLUSTER_FILE, 'data')
+    ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
+    clusters = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
     return con, ids, clusters
 
 def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
-    my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["https", "com", "www", "ve", "http", "don", "amp", "didn"]))
+    my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["https", "com", "www", "ve", "http", "amp"]))
     tfidf_vectorizer = cuml.feature_extraction.text.TfidfVectorizer(stop_words=my_stop_words, lowercase=True,  max_features=TFIDF_MAX_FEATURES)
     tfidf_matrix = execute_with_gpu_logging(tfidf_vectorizer.fit_transform, documents)
     feature_names = tfidf_vectorizer.get_feature_names()  # Get all feature names from the vectorizer
 
     return tfidf_matrix, feature_names
 
-def main(REDDIT_DATA_DIR:str, TABLE_NAME:str, CLUSTER_FILE:str, IDS_FILE:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, CLUSTER_ORDER:str, TFIDF_WORDS_PER_CLUSTER:int):
+def main(REDDIT_DATA_DIR:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int):
     """Main function to compute the TF-IDF matrix and adjacency matrix."""
 
-    con, ids, clusters = load_data(REDDIT_DATA_DIR, TABLE_NAME, CLUSTER_FILE, IDS_FILE)
+    con, ids, clusters = load_data(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME)
     iterator_cluster_documents = get_cluster_posts(con, ids, clusters, TABLE_NAME)
-    documents, all_clusters = prepare_documents(iterator_cluster_documents) 
+    documents, unique_clusters = prepare_documents(iterator_cluster_documents)
     tfidf_matrix, feature_names = TF_IDF_matrix(documents, TFIDF_MAX_FEATURES)
-    adjacency_matrix = compute_adjacency_matrix(tfidf_matrix, all_clusters)
-    save_h5py(adjacency_matrix, ADJACENCY_MATRIX, "data")
-    save_json({"cluster_order": list(all_clusters)}, CLUSTER_ORDER)
 
-    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, all_clusters, TFIDF_WORDS_PER_CLUSTER)
+    # only needed for hierarchical clustering
+    # adjacency_matrix = compute_adjacency_matrix(tfidf_matrix, unique_clusters)
+    # save_h5py(adjacency_matrix, ADJACENCY_MATRIX, "data")   
+
+    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_clusters, TFIDF_WORDS_PER_CLUSTER)
     save_json(top_words_per_document, TFIDF_FILE)
-
 
 
 if __name__ == "__main__":
 
     # config.CLUSTER_FILE = config.SUBCLUSTER_FILE
     # config.TFIDF_FILE = config.SUBCLUSTER_TFIDF_FILE
-    run_function_with_overrides(main, config)
+    print("Total running time:", run_function_with_overrides(main, config))
+
 
 
     

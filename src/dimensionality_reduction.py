@@ -33,6 +33,7 @@ def UMAP_transform_full_fit(
     UMAP_N_Neighbors: int,
     UMAP_COMPONENTS: int,
     UMAP_MINDIST: float,
+    DIMENSIONALITY_REDUCTION_DB_NAME: str,
 ):
     """
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
@@ -45,7 +46,7 @@ def UMAP_transform_full_fit(
         min_dist=UMAP_MINDIST,
     )
     transformed = local_model.fit_transform(features)
-    save_h5py(transformed, PROCESSED_REDDIT_DATA, "umap_coordinates")
+    save_h5py(transformed, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
 
 def UMAP_transform_partial_fit(
@@ -56,6 +57,7 @@ def UMAP_transform_partial_fit(
     PARTIAL_FIT_DIM_REDUCTION: float,
     NEGATIVE_SAMPLE_RATE: int,
     UMAP_N_EPOCHS: int,
+    DIMENSIONALITY_REDUCTION_DB_NAME: str,
 ) -> None:
     
     """
@@ -89,7 +91,7 @@ def UMAP_transform_partial_fit(
         else:
             result = np.concatenate((result, transformed_chunk), axis=0)
 
-    save_h5py(result, PROCESSED_REDDIT_DATA, "umap_coordinates")
+    save_h5py(result, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
 
 if __name__ == "__main__":

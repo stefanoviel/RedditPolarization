@@ -18,8 +18,7 @@ Get it running on the cluster, and scale up to whole dataset
 
 
 TODO: 
-add ids to h5 file. Everything inside the same h5
-dimensionality reduction only load subsample
+nice memory logging in understand what is the limit
 
 
 

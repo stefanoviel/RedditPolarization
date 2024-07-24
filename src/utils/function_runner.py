@@ -75,7 +75,7 @@ def execute_with_gpu_logging(func, *args, **kwargs):
     for gpu_id in initial_mem.keys():
         memory_used = final_mem[gpu_id] - initial_mem[gpu_id]
         if memory_used > 0:
-            logger.info(f"GPU {gpu_id}: {final_mem}MB of GPU memory were filled after running {func.__name__} and it  took {end_time - start_time:.2f}s")
+            logger.info(f"GPU {gpu_id}: {final_mem}MB of GPU memory were filled after running {func.__name__} and it  took {end_time - start_time:.2f}s") # TODO: why isn't the time working properly?
     
     return result
 
@@ -103,21 +103,4 @@ def run_function_with_overrides(func: callable, config: object):
 
 # Example usage
 if __name__ == "__main__":
-    import config  # assuming config is a module with the needed attributes
-
-    def UMAP_transform_partial_fit(
-        EMBEDDINGS_FILE,
-        UMAP_N_Neighbors,
-        UMAP_COMPONENTS,
-        UMAP_MINDIST,
-        PARTIAL_FIT_DIM_REDUCTION,
-        DIMENSIONALITY_REDUCTION_FILE,
-    ):
-        print(f"EMBEDDINGS_FILE: {EMBEDDINGS_FILE}")
-        print(f"UMAP_N_Neighbors: {UMAP_N_Neighbors}")
-        print(f"UMAP_COMPONENTS: {UMAP_COMPONENTS}")
-        print(f"UMAP_MINDIST: {UMAP_MINDIST}")
-        print(f"PARTIAL_FIT_DIM_REDUCTION: {PARTIAL_FIT_DIM_REDUCTION}")
-        print(f"DIMENSIONALITY_REDUCTION_FILE: {DIMENSIONALITY_REDUCTION_FILE}")
-
-    run_function_with_overrides(UMAP_transform_partial_fit, config)
+    pass

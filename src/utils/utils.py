@@ -15,14 +15,6 @@ def load_h5py(file_path: str, db_name:str) -> np.ndarray:
         embeddings = file[db_name][:]
     return embeddings
 
-def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray) -> np.ndarray:
-    """
-    Load specific indices from an HDF5 file into a NumPy array.
-    """
-    with h5py.File(file_path, "r") as file:
-        dataset = file[db_name]
-        return dataset[indices]
-    
 
 def get_indices_for_random_h5py_subset(filename: str, dataset_name, subset_fraction: float):
     """Extract data points corresponding to indices"""
@@ -36,6 +28,22 @@ def get_indices_for_random_h5py_subset(filename: str, dataset_name, subset_fract
         partial_fit_indices.sort()
 
     return partial_fit_indices, total_samples, num_samples
+
+def load_with_indices_h5py_efficient(file_path: str, db_name: str, indices: np.ndarray) -> np.ndarray:
+    """
+    Load specific indices from an HDF5 file into a NumPy array using an efficient block loading strategy.
+    It's necessary to to load everything into memory, otherwise it gets very slow.
+    """
+    indices = np.array(indices)
+    min_idx, max_idx = indices.min(), indices.max()
+
+    with h5py.File(file_path, "r") as file:
+        dataset = file[db_name]
+        data_block = dataset[min_idx:max_idx+1]  # +1 because max_idx is inclusive
+
+    selected_data = data_block[indices - min_idx]
+
+    return selected_data
 
 def save_h5py(data: np.ndarray, file_path: str, db_name: str):
     """

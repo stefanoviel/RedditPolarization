@@ -8,7 +8,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # datasets names
-REDDIT_DATA_DIR = 'data/parquet'
+REDDIT_DATA_DIR = 'data/big_test'
 PROCESSED_REDDIT_DATA = os.path.join(OUTPUT_DIR, "reddit_data.h5")
 
 # Database configuration and parameters for filtering
@@ -29,9 +29,9 @@ UMAP_COMPONENTS = 5
 UMAP_N_Neighbors = 4 # increase this to get more global structure
 UMAP_MINDIST = 0
 PARTIAL_FIT_DIM_REDUCTION = 0.1
-NEGATIVE_SAMPLE_RATE = 15 # understand better what it 
+NEGATIVE_SAMPLE_RATE = 5 # understand better what it 
 LEARNING_RATE = 1.0
-UMAP_N_EPOCHS = 500
+UMAP_N_EPOCHS = 200
 
 # clustering 
 CLUSTER_DB_NAME =  "clusters"

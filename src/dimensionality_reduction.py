@@ -24,9 +24,10 @@ import dask.array as da
 # from cuml.dask.manifold import UMAP as MNMG_UMAP
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
+import time
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-from src.utils.utils import load_h5py, load_with_indices_h5py, get_indices_for_random_h5py_subset, save_h5py
+from src.utils.utils import load_h5py, load_with_indices_h5py_efficient, get_indices_for_random_h5py_subset, save_h5py
 
 def UMAP_transform_full_fit(
     PROCESSED_REDDIT_DATA: str,
@@ -69,13 +70,13 @@ def UMAP_transform_partial_fit(
         n_components=UMAP_COMPONENTS,
         min_dist=UMAP_MINDIST,
         negative_sample_rate=NEGATIVE_SAMPLE_RATE,
-        n_epochs=UMAP_N_EPOCHS
+        n_epochs=UMAP_N_EPOCHS,
     )
 
     partial_fit_indices, total_samples, num_samples = get_indices_for_random_h5py_subset(PROCESSED_REDDIT_DATA, "embeddings", PARTIAL_FIT_DIM_REDUCTION)
+    logger.info(f"Running partial fit on {num_samples} samples out of {total_samples} samples")
 
-    sampled_features = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", partial_fit_indices)
-    
+    sampled_features = load_with_indices_h5py_efficient(PROCESSED_REDDIT_DATA, "embeddings", partial_fit_indices)
     execute_with_gpu_logging(umap_model.fit, sampled_features)
 
     # iterate over the rest of the data in chunks of subset_size and transform
@@ -84,7 +85,7 @@ def UMAP_transform_partial_fit(
     result = None
     for i in tqdm(range(0, total_samples - num_samples, num_samples)):
         indices = np.arange(i, i + num_samples)
-        chunk = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", indices)
+        chunk = load_with_indices_h5py_efficient(PROCESSED_REDDIT_DATA, "embeddings", indices)
         transformed_chunk = execute_with_gpu_logging(umap_model.transform, chunk)
         if result is None:
             result = transformed_chunk
@@ -95,6 +96,4 @@ def UMAP_transform_partial_fit(
 
 
 if __name__ == "__main__":
-
     print("Total running time:", run_function_with_overrides(UMAP_transform_partial_fit, config))
-

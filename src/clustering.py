@@ -205,7 +205,7 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: l
 def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME:str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
-    best_params, DBCV_scores = search_best_dbcv(data,HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH, HDBS_MIN_SAMPLES_SEARCH)
+    best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH, HDBS_MIN_SAMPLES_SEARCH)
 
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
     clusters = scanner.fit_predict(data)

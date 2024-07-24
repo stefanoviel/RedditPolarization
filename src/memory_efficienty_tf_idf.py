@@ -6,10 +6,20 @@ import sys
 # adding root directory to paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from logging_config import configure_get_logger
+import config
 import numpy as np
 from collections import defaultdict, Counter
 import os
 import duckdb
+from tqdm import tqdm
+import string
+from itertools import chain
+from sklearn.feature_extraction import text
+import re
+
+if not os.path.exists(config.OUTPUT_DIR):
+    os.makedirs(config.OUTPUT_DIR)
+logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__, log_level='INFO')
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 from src.utils.utils import create_database_connection, load_json, save_h5py, load_h5py, save_json
@@ -19,6 +29,24 @@ class TFIDF:
         self.df = defaultdict(int)
         self.total_documents = 0
         self.vocab = set()
+        self.stop_words = text.ENGLISH_STOP_WORDS.union(["https", "com", "www", "ve", "http", "amp"])
+    
+    def clean_text(self, text):
+        """
+        Converts text to lowercase, removes punctuation, numbers, and excludes stop words.
+        """
+        # Remove punctuation
+        text = text.translate(str.maketrans('', '', string.punctuation))
+        # Convert to lowercase
+        text = text.lower()
+        # Remove numbers (and other non-linguistic characters if needed)
+        text = re.sub(r'\d+', '', text)  # Remove digits
+        # Split into words
+        words = text.split()
+        # Remove stop words and filter out any remaining non-alphabetic characters
+        return [word for word in words if word not in self.stop_words and word.isalpha()]
+
+
 
     def map_ids_to_clusters(self, ids, cluster_assignment):
         """
@@ -46,20 +74,19 @@ class TFIDF:
             posts = cursor.fetchall()
             yield cluster, posts
 
-    def load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_FILE):
+    def load_connections_ids_clusters(self, REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME):
         # Create a database connection
         con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["id", "title", "selftext"])
-        ids = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
+        ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
         clusters = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
         return con, ids, clusters
 
 
-    def process_documents(self, iterator_cluster_posts):
-        # Step 1: Compute DF for each term
-
-        for cluster, posts in iterator_cluster_posts:
-            doc = " ".join([title + " " + selftext for title, selftext in posts])
-            terms = doc.split()
+    def compute_df(self, iterator_cluster_posts):
+        for cluster, posts in tqdm(iterator_cluster_posts):
+            # Process each post to remove stop words and handle case
+            terms = list(chain.from_iterable(self.clean_text(title + " " + selftext) for title, selftext in posts))
+            print(f'len(terms) {len(terms):,}')
             self.vocab.update(terms)
             unique_terms = set(terms)
             for term in unique_terms:
@@ -98,17 +125,32 @@ class TFIDF:
 
         return tfidf
 
-    def main(self, REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_FILE):
-        # Load connections, IDs, and cluster assignments
-        con, ids, clusters = self.load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_FILE)
 
-        iterator_cluster_posts = self.yield_post_per_cluster(con, ids, clusters, TABLE_NAME)
-        # Compute TF-IDF
-        tfidf = TFIDF()
-        tfidf.process_documents(iterator_cluster_posts)
-        idf = tfidf.compute_idf()
+def main(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME, TFIDF_FILE):
+    
+    tfidf = TFIDF()
+    # Load connections, IDs, and cluster assignments
+    con, ids, clusters = tfidf.load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME)
 
-        iterator_cluster_posts = self.yield_post_per_cluster(con, ids, clusters, TABLE_NAME)
+    iterator_cluster_posts = tfidf.yield_post_per_cluster(con, ids, clusters, TABLE_NAME)
 
-        # tfidf_scores = tfidf.compute_tfidf(documents[0], idf)
-        print(tfidf_scores)
+    logger.info("Computing DF")
+    tfidf.compute_df(iterator_cluster_posts)    
+    idf = tfidf.compute_idf()
+
+    iterator_cluster_posts = tfidf.yield_post_per_cluster(con, ids, clusters, TABLE_NAME)
+
+    logger.info("Computing TF-IDF")
+    top_words_per_cluster = {}
+    for cluster, posts in tqdm(iterator_cluster_posts):
+        doc = " ".join([title + " " + selftext for title, selftext in posts])
+        tfidf_scores = tfidf.compute_tfidf(doc, idf)
+        sorted_tfidf = sorted(tfidf_scores.items(), key=lambda x: x[1], reverse=True)
+
+        top_words_per_cluster[str(cluster)] =  [word for word, _ in sorted_tfidf[:50]]
+
+    save_json(top_words_per_cluster, TFIDF_FILE)
+
+if __name__ == "__main__":
+    print("Total running time:", run_function_with_overrides(main, config))
+

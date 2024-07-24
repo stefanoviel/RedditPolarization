@@ -25,24 +25,34 @@ if not os.path.exists(config.OUTPUT_DIR):
 logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__, log_level='INFO')
 
 
-def get_cluster_posts(con: duckdb.DuckDBPyConnection, ids:list, cluster_of_all_posts:list, TABLE_NAME:str):
+def map_ids_to_clusters(self, ids, cluster_assignment):
+    """
+    Map IDs to their clusters, assuming clusters and IDs are in the same order.
+    """
+    cluster_to_ids = {}
+    for id, cluster in zip(ids, cluster_assignment):
+        if cluster not in cluster_to_ids:
+            cluster_to_ids[cluster] = []
+        cluster_to_ids[cluster].append(id)
+    return cluster_to_ids
+
+def yield_post_per_cluster(self, con: duckdb.DuckDBPyConnection, ids:list, cluster_assignment:list, TABLE_NAME:str):
     """
     Yield the title and selftext for all the posts in each cluster by executing a database query for each cluster.
     """
     # Map IDs to their clusters, assuming clusters and IDs are in the same order
-    cluster_to_ids = {}
-    for id, cluster in zip(ids, cluster_of_all_posts):
-        if cluster not in cluster_to_ids:
-            cluster_to_ids[cluster] = []
-        cluster_to_ids[cluster].append(id)
+    cluster_to_ids = self.map_ids_to_clusters(ids, cluster_assignment)
 
     # Execute a query for each cluster and yield results
-    for cluster, cluster_ids in cluster_to_ids.items():
+    for _, cluster_ids in cluster_to_ids.items():
         placeholders = ','.join(['?'] * len(cluster_ids))  # Prepare placeholders for SQL query
         query = f"SELECT title, selftext FROM {TABLE_NAME} WHERE id IN ({placeholders})"
         cursor = con.execute(query, cluster_ids)
         posts = cursor.fetchall()
-        yield cluster, posts
+        all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
+        yield all_posts_in_cluster
+
+
 
 def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
     """Extract top words for each document (cluster in our case) from the tfidf matrix."""
@@ -60,6 +70,7 @@ def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
 
     return top_words_per_document
 
+
 def compute_adjacency_matrix(tfidf_matrix, all_clusters):
     """Compute the adjacency matrix fo the cosine similarity between all clusters."""
     adjacency_matrix = np.zeros((len(all_clusters), len(all_clusters)))
@@ -73,30 +84,7 @@ def compute_adjacency_matrix(tfidf_matrix, all_clusters):
     return adjacency_matrix
 
 
-def prepare_documents(iterator_cluster_posts: iter) -> pd.Series:
-    """
-    Generate and return a list of document strings aggregated by cluster and a list of corresponding cluster identifiers.
-
-    Parameters:
-    - con (Connection): The database connection object.
-    - ids (list[int]): the ids of all the post.
-    - clusters (list[int]): the cluster to which each post belongs to. 
-    - table_name (str): The name of the table from which to retrieve the post data.
-
-    Returns:
-    - pd.Series: A pandas Series where each element is a string consisting of concatenated titles and selftexts 
-                 from posts within the same cluster.
-    - list[int]: A list of integers representing the unique cluster identifiers for which documents were generated.
-    """
-    all_text_per_cluster = []
-    unique_clusters = []
-    for cluster, posts in tqdm(iterator_cluster_posts):
-        unique_clusters.append(int(cluster))
-        cluster_words = " ".join([title + " " + selftext for title, selftext in posts])
-        all_text_per_cluster.append(cluster_words)
-    return pd.Series(all_text_per_cluster), unique_clusters
-
-def load_data(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME):
+def load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME):
     # Create a database connection
     con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["id", "title", "selftext"])
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
@@ -105,19 +93,18 @@ def load_data(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAM
 
 def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
     my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["https", "com", "www", "ve", "http", "amp"]))
-    tfidf_vectorizer = cuml.feature_extraction.text.TfidfVectorizer(stop_words=my_stop_words, lowercase=True,  max_features=TFIDF_MAX_FEATURES)
+    tfidf_vectorizer = TfidfVectorizer(stop_words=my_stop_words, lowercase=True,  max_features=TFIDF_MAX_FEATURES)
     tfidf_matrix = execute_with_gpu_logging(tfidf_vectorizer.fit_transform, documents)
-    feature_names = tfidf_vectorizer.get_feature_names()  # Get all feature names from the vectorizer
+    feature_names = tfidf_vectorizer.get_feature_names_out()  # Get all feature names from the vectorizer
 
     return tfidf_matrix, feature_names
 
 def run_tf_idf(REDDIT_DATA_DIR:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int):
     """Main function to compute the TF-IDF matrix and adjacency matrix."""
 
-    con, ids, clusters = load_data(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME)
-    iterator_cluster_documents = get_cluster_posts(con, ids, clusters, TABLE_NAME)
-    documents, unique_clusters = prepare_documents(iterator_cluster_documents)
-    tfidf_matrix, feature_names = TF_IDF_matrix(documents, TFIDF_MAX_FEATURES)
+    con, ids, clusters = load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME)
+    iterator_posts_in_cluster = yield_post_per_cluster(con, ids, clusters, TABLE_NAME)
+    tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
 
     # only needed for hierarchical clustering
     # adjacency_matrix = compute_adjacency_matrix(tfidf_matrix, unique_clusters)

@@ -25,7 +25,7 @@ if not os.path.exists(config.OUTPUT_DIR):
 logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__, log_level='INFO')
 
 
-def map_ids_to_clusters(self, ids, cluster_assignment):
+def map_ids_to_clusters(ids, cluster_assignment):
     """
     Map IDs to their clusters, assuming clusters and IDs are in the same order.
     """
@@ -36,13 +36,10 @@ def map_ids_to_clusters(self, ids, cluster_assignment):
         cluster_to_ids[cluster].append(id)
     return cluster_to_ids
 
-def yield_post_per_cluster(self, con: duckdb.DuckDBPyConnection, ids:list, cluster_assignment:list, TABLE_NAME:str):
+def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids:dict, TABLE_NAME:str):
     """
     Yield the title and selftext for all the posts in each cluster by executing a database query for each cluster.
     """
-    # Map IDs to their clusters, assuming clusters and IDs are in the same order
-    cluster_to_ids = self.map_ids_to_clusters(ids, cluster_assignment)
-
     # Execute a query for each cluster and yield results
     for _, cluster_ids in cluster_to_ids.items():
         placeholders = ','.join(['?'] * len(cluster_ids))  # Prepare placeholders for SQL query
@@ -102,15 +99,17 @@ def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
 def run_tf_idf(REDDIT_DATA_DIR:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int):
     """Main function to compute the TF-IDF matrix and adjacency matrix."""
 
-    con, ids, clusters = load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME)
-    iterator_posts_in_cluster = yield_post_per_cluster(con, ids, clusters, TABLE_NAME)
+    con, ids, post_cluster_assignment = load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME)
+
+    cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
+    iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME)
     tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
 
     # only needed for hierarchical clustering
     # adjacency_matrix = compute_adjacency_matrix(tfidf_matrix, unique_clusters)
     # save_h5py(adjacency_matrix, ADJACENCY_MATRIX, "data")   
 
-    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_clusters, TFIDF_WORDS_PER_CLUSTER)
+    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, list(cluster_to_ids.keys()), TFIDF_WORDS_PER_CLUSTER)
     save_json(top_words_per_document, TFIDF_FILE)
 
 

@@ -27,7 +27,6 @@ def main():
 
 
     logger.info("-------------------------------")
-    logger.info("Memory and time usage:")
     # logger.info(f"Time for embeddings: {time_embeddings/60:,} min")
     # logger.info(f"Time for UMAP: {time_umap} s")
     logger.info(f"Time for HDBSCAN: {time_hdbscan} s")

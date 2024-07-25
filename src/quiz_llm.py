@@ -1,4 +1,3 @@
-
 import os
 import sys
 
@@ -29,8 +28,6 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 from src.utils.utils import create_database_connection, load_json, load_h5py, load_model_and_tokenizer, create_tokenized_prompt, generate_response
 
-
-
 def get_random_cluster_post(con, ids, clusters, TABLE_NAME):
 
     # Map IDs to their clusters, assuming clusters and IDs are in the same order
@@ -49,18 +46,18 @@ def get_random_cluster_post(con, ids, clusters, TABLE_NAME):
         yield cluster, posts
 
 
-def generate_quiz(con, ids, clusters, topic_description, TABLE_NAME):
+def generate_quiz(con, ids, clusters, topic_description, TABLE_NAME, n_options=5):
 
     questions = []
     for cluster, posts in get_random_cluster_post(con, ids, clusters, TABLE_NAME):
-        if len(posts) == 0:
+        if len(posts) == 0 or cluster == -1:
             continue
 
         post = posts[0]
         corect_topic = topic_description[str(cluster)]
-        all_topics = [topic_description[str(c)] for c in np.random.choice(list(topic_description.keys()), 4, replace=False) if c != cluster]
+        all_topics = [topic_description[str(c)] for c in np.random.choice(list(topic_description.keys()), n_options-1, replace=False) if c != cluster]
 
-        correct_topic_position = np.random.randint(0, 5)
+        correct_topic_position = np.random.randint(0, n_options)
         
         all_topics.insert(correct_topic_position, str(corect_topic))
         all_topic_string = "\n".join([f"{chr(65+i)}) {t}" for i, t in enumerate(all_topics)])
@@ -77,13 +74,13 @@ def generate_quiz(con, ids, clusters, topic_description, TABLE_NAME):
 
     return questions
 
-def solve_quiz(IDS_FILE, CLUSTER_FILE, TABLE_NAME, TFIDF_FILE, REDDIT_DATA_DIR, LLM_NAME): 
+def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, TFIDF_FILE, REDDIT_DATA_DIR, LLM_NAME, NUMBER_OF_OPTIONS): 
 
     topic_description = load_json(TFIDF_FILE)
-    ids = load_json(IDS_FILE)
-    clusters = load_h5py(CLUSTER_FILE, 'data')
+    ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
+    post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
     con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ['id', 'title', 'selftext'])
-    questions = generate_quiz(con, ids, clusters, topic_description, TABLE_NAME)
+    questions = generate_quiz(con, ids, post_cluster_assignment, topic_description, TABLE_NAME, NUMBER_OF_OPTIONS)
 
     model, tokenizer = load_model_and_tokenizer(LLM_NAME)
     correct_answers_count = 0

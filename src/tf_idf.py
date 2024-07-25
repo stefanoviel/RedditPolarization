@@ -41,13 +41,14 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids:dict, 
     Yield the title and selftext for all the posts in each cluster by executing a database query for each cluster.
     """
     # Execute a query for each cluster and yield results
-    for _, cluster_ids in cluster_to_ids.items():
-        placeholders = ','.join(['?'] * len(cluster_ids))  # Prepare placeholders for SQL query
-        query = f"SELECT title, selftext FROM {TABLE_NAME} WHERE id IN ({placeholders})"
-        cursor = con.execute(query, cluster_ids)
-        posts = cursor.fetchall()
-        all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
-        yield all_posts_in_cluster
+    for cluster, cluster_ids in cluster_to_ids.items():
+        if int(cluster) != -1:  
+            placeholders = ','.join(['?'] * len(cluster_ids))  # Prepare placeholders for SQL query
+            query = f"SELECT title, selftext FROM {TABLE_NAME} WHERE id IN ({placeholders})"
+            cursor = con.execute(query, cluster_ids)
+            posts = cursor.fetchall()
+            all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
+            yield all_posts_in_cluster
 
 
 
@@ -55,6 +56,9 @@ def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
     """Extract top words for each document (cluster in our case) from the tfidf matrix."""
     top_words_per_document = {}
     for cluster_index in tqdm(range(tfidf_matrix.shape[0])):
+        cluster_key = str(unique_clusters[cluster_index])
+        if cluster_key == "-1":
+            continue
         row = tfidf_matrix.getrow(cluster_index)
         indices = row.indices
         data = row.data
@@ -62,7 +66,6 @@ def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
         top_indices_sorted = top_indices[np.argsort(data[top_indices])[::-1]]
         original_indices = indices[top_indices_sorted]
         top_features = [feature_names[ind] for ind in original_indices]
-        cluster_key = str(unique_clusters[cluster_index])
         top_words_per_document[cluster_key] = top_features
 
     return top_words_per_document
@@ -81,12 +84,6 @@ def compute_adjacency_matrix(tfidf_matrix, all_clusters):
     return adjacency_matrix
 
 
-def load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME):
-    # Create a database connection
-    con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["id", "title", "selftext"])
-    ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
-    clusters = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
-    return con, ids, clusters
 
 def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
     my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["https", "com", "www", "ve", "http", "amp"]))
@@ -98,8 +95,9 @@ def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
 
 def run_tf_idf(REDDIT_DATA_DIR:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int):
     """Main function to compute the TF-IDF matrix and adjacency matrix."""
-
-    con, ids, post_cluster_assignment = load_connections_ids_clusters(REDDIT_DATA_DIR, PROCESSED_REDDIT_DATA, TABLE_NAME, CLUSTER_DB_NAME, IDS_DB_NAME)
+    con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["id", "title", "selftext"])
+    ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
+    post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
 
     cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
     iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME)
@@ -109,7 +107,9 @@ def run_tf_idf(REDDIT_DATA_DIR:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, C
     # adjacency_matrix = compute_adjacency_matrix(tfidf_matrix, unique_clusters)
     # save_h5py(adjacency_matrix, ADJACENCY_MATRIX, "data")   
 
-    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, list(cluster_to_ids.keys()), TFIDF_WORDS_PER_CLUSTER)
+    unique_cluster_order = list(cluster_to_ids.keys())
+    unique_cluster_order.remove(-1)  # Remove the noise cluster
+    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_cluster_order, TFIDF_WORDS_PER_CLUSTER)
     save_json(top_words_per_document, TFIDF_FILE)
 
 

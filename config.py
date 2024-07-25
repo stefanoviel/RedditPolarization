@@ -8,6 +8,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # datasets names
+# REDDIT_DATA_DIR = 'data/big_test'
 REDDIT_DATA_DIR = 'data/parquet'
 PROCESSED_REDDIT_DATA = os.path.join(OUTPUT_DIR, "reddit_data.h5")
 
@@ -38,8 +39,8 @@ CLUSTER_DB_NAME =  "clusters"
 SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
-HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH = [0.0005, 0.001, 0.005, 0.01]
-HDBS_MIN_SAMPLES_SEARCH = [5, 20, 50, 80, 100]
+HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH = [0.001]  #[0.0005, 0.001, 0.005, 0.01]
+HDBS_MIN_SAMPLES_SEARCH = [30] #[5, 20, 50, 80, 100]
 PARTIAL_FIT_CLUSTER = 0.1  # it might not be used, depending on the employed function
 
 # tfidf
@@ -74,6 +75,6 @@ PROMPT = """ Given the following lists of words, each associated with a cluster 
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")
 RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]
 
-
-# quiz
+# quiz & coherence
 NUMBER_OF_OPTIONS = 14
+N_POSTS = 1e6

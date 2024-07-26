@@ -12,7 +12,6 @@ from tqdm import tqdm
 import numpy as np
 import cuml
 import time
-import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 import dbcv
@@ -29,8 +28,6 @@ if not os.path.exists(config.OUTPUT_DIR):
     os.makedirs(config.OUTPUT_DIR)
 logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
 
-import logging
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
@@ -206,6 +203,7 @@ def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
     best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH, HDBS_MIN_SAMPLES_SEARCH)
+    # best_params = {'min_cluster_size': 20000, 'min_samples': 20}
 
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
     clusters = scanner.fit_predict(data)

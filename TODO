@@ -1,5 +1,3 @@
-
-TODO:
 there is some stocasticity in the dimensionality reduction. for the final result it would probably require multiple runs. 
 score filtering should differe every year (e.g. keep only the one with the 50% highest scores)
 trustworthiness takes very long on small dataset (more than one minutes fro 500k embeddings). Testing done with this metrics will have to be run on a subset.

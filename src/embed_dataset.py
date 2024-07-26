@@ -12,10 +12,7 @@ logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, execute
 
 import torch
 from sentence_transformers import SentenceTransformer
-import duckdb
 import h5py
-import json
-import yaml
 from tqdm import tqdm
 import langid
 

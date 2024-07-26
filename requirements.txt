@@ -15,22 +15,14 @@ comm==0.2.2
 contourpy==1.2.1
 cramjam==2.8.3
 cuda-python==12.5.0
-cudf-cu12==24.6.0
-cuml-cu12==24.6.1
 cupy-cuda12x==13.2.0
 cycler==0.12.1
 Cython==0.29.37
 dask==2024.5.1
-dask-cuda==24.6.0
-dask-cudf-cu12==24.6.0
-dask-expr==1.1.1
 datasets==2.20.0
-dbcv @ git+https://github.com/FelSiq/DBCV@aa2279f97ad877f8ba4e7d4df8c849cc11239ca5
 debugpy==1.8.1
 decorator==5.1.1
 dill==0.3.8
-distributed==2024.5.1
-distributed-ucxx-cu12==0.38.0
 duckdb==1.0.0
 executing==2.0.1
 fastjsonschema==2.20.0

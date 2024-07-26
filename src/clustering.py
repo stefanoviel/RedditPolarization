@@ -29,7 +29,6 @@ if not os.path.exists(config.OUTPUT_DIR):
 logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, log_level='INFO', executed_file_name = __file__)
 
 
-os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 
 os.environ['CUDA_VISIBLE_DEVICES']=str(1)

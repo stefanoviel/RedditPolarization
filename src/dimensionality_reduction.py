@@ -21,8 +21,6 @@ from cuml.manifold import UMAP
 from dask_cuda import LocalCUDACluster
 from dask.distributed import Client
 import dask.array as da
-# from cuml.dask.manifold import UMAP as MNMG_UMAP
-os.environ["NUMEXPR_MAX_THREADS"] = "32"
 import numexpr
 import time
 

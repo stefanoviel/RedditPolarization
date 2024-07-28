@@ -1,15 +1,15 @@
 import os
 import time
 
-EXPERIMENT_NAME = "testing_pipeline_small"
+EXPERIMENT_NAME = "2010_2023"
 OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 # OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # datasets names
-# REDDIT_DATA_DIR = 'data/big_test'
-REDDIT_DATA_DIR = 'data/parquet'
+REDDIT_DATA_DIR = '/cluster/work/coss/anmusso/reddit_parquet/submissions/'
+# REDDIT_DATA_DIR = 'data/parquet'
 PROCESSED_REDDIT_DATA = os.path.join(OUTPUT_DIR, "reddit_data.h5")
 
 # Database configuration and parameters for filtering

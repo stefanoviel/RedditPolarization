@@ -6,7 +6,7 @@ put random seeds everywhere
 
 
 
-module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6
+module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6 cuda/12.1.1
 
 
 return TF-IDF matrix, do clustering on that
@@ -17,7 +17,7 @@ Get it running on the cluster, and scale up to whole dataset
 
 TODO: 
 nice memory logging in understand what is the limit
-
+`
 
 
 

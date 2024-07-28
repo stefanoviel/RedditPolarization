@@ -44,7 +44,8 @@ def prepare_texts_and_ids(data: list[tuple[int, str, str]]) -> tuple[list[str], 
     texts = []
     ids = []
 
-    for id, title, text in tqdm(data):
+    for id, title, text, created_utc in tqdm(data):
+        print(created_utc)
         full_text = title + " " + text
         # Detect the language of the concatenated text
         lang, _ = langid.classify(full_text)
@@ -86,16 +87,18 @@ def count_rows_to_embed(con, table_name:str,  min_score: int, min_post_length: i
 
     return tot_rows, rows_to_embed
 
-def fetch_data_in_batches(con, table_name:str, batch_size: int, min_score: int, min_post_length: int):
+def fetch_data_in_batches(con, table_name:str, batch_size: int, min_score: int, min_post_length: int, start_date: int, end_date: int):
     """Fetch data from the specified table in batches."""
 
-    query = f"""SELECT id, title, selftext
+    query = f"""SELECT id, title, selftext, created_utc
             FROM {table_name}
             WHERE LENGTH(title) > {min_post_length}
             AND score > {min_score}
             AND selftext NOT LIKE '%[deleted]%'
             AND selftext NOT LIKE '%[removed]%'
             AND media = FALSE 
+            AND {start_date} < created_utc 
+            AND created_utc < {end_date}
             """
     
     con.execute(query)
@@ -130,7 +133,7 @@ def initialize_h5_file(file_path: str, embedding_dim: int, embeddings_db_name: s
     return file_path
 
 
-def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, PROCESSED_REDDIT_DATA: str, MIN_SCORE: int, MIN_POST_LENGTH: int, EMBEDDING_DB_NAME:str, IDS_DB_NAME:str):
+def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, PROCESSED_REDDIT_DATA: str, MIN_SCORE: int, MIN_POST_LENGTH: int, EMBEDDING_DB_NAME:str, IDS_DB_NAME:str, START_DATE: int, END_DATE: int):
     """Fetch data in batches from db, generate embeddings, and save them incrementally along with their corresponding IDs."""
     model = initialize_model(MODEL_NAME)
     con = create_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"])
@@ -138,7 +141,7 @@ def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME
     h5_file = None
     total_processed = 0
 
-    for batch in fetch_data_in_batches(con, TABLE_NAME, MODEL_BATCH_SIZE, MIN_SCORE, MIN_POST_LENGTH):
+    for batch in fetch_data_in_batches(con, TABLE_NAME, MODEL_BATCH_SIZE, MIN_SCORE, MIN_POST_LENGTH, START_DATE, END_DATE):
         texts, batch_ids = prepare_texts_and_ids(batch)
         
         if texts is not None:

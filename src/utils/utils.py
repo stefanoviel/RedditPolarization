@@ -87,14 +87,28 @@ def sample_hdf5(input_filename, output_filename, sample_fraction=0.1):
                     print(f"Not enough data to sample in dataset {dataset_name}")
 
 
-def create_database_connection(parquet_directory:str, table_name:str, columns: list) -> duckdb.DuckDBPyConnection:
+def create_database_connection(parquet_directory: str, table_name: str, columns: list) -> duckdb.DuckDBPyConnection:
     """Create and return a database connection using the provided configuration."""
     files = [f'{parquet_directory}/{file}' for file in os.listdir(parquet_directory)]
     con = duckdb.connect(database=':memory:')
     query_files = ', '.join(f"'{f}'" for f in files)
-    columns_str = ', '.join(columns)
-    sql_query = f"CREATE TABLE {table_name} AS SELECT {columns_str} FROM read_parquet([{query_files}], union_by_name=True)"
-    con.execute(sql_query)
+    
+    # Define the schema with media as BOOLEAN, and filter out rows where media is not a boolean
+    columns_str = ', '.join(f"{col}" if col != "media" else "media" for col in columns)
+    sql_query = f"""
+    CREATE TABLE {table_name} AS 
+    SELECT {columns_str} 
+    FROM read_parquet([{query_files}], union_by_name=True)
+    WHERE typeof(media) = 'BOOLEAN'
+    """
+    # ignoring the rows where media is not a boolean
+    
+    try:
+        con.execute(sql_query)
+    except duckdb.ConversionException as e:
+        print(f"Error creating table {table_name}: {e}")
+        raise
+    
     return con
 
 

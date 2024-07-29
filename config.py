@@ -1,22 +1,22 @@
 import os
 import time
 
-EXPERIMENT_NAME = "2010_2023"
+EXPERIMENT_NAME = "testingg"
 OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 # OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # datasets names
-REDDIT_DATA_DIR = '/cluster/work/coss/anmusso/reddit_parquet/submissions/'
-# REDDIT_DATA_DIR = 'data/parquet'
+# REDDIT_DATA_DIR = '/cluster/work/coss/anmusso/reddit_parquet/submissions/'
+REDDIT_DATA_DIR = 'data/parquet'
 PROCESSED_REDDIT_DATA = os.path.join(OUTPUT_DIR, "reddit_data.h5")
 
 # Database configuration and parameters for filtering
 TABLE_NAME = 'submissions'
 MIN_SCORE = 10
 MIN_POST_LENGTH = 40
-START_DATE= 1262304000 # 2010-01-01
+START_DATE= 1199179770 # 2008-01-01
 END_DATE= 1672531200 # 2023-01-01
 
 # Embeddings 

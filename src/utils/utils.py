@@ -88,8 +88,8 @@ def sample_hdf5(input_filename, output_filename, sample_fraction=0.1):
                     print(f"Not enough data to sample in dataset {dataset_name}")
 
 
-def create_database_connection(parquet_directory: str, table_name: str, columns: list, max_expression_depth: int = 2500) -> duckdb.DuckDBPyConnection:
-    """Create and return a database connection using the provided configuration."""
+def create_filtered_database_connection(parquet_directory: str, table_name: str, columns: list, min_score: int, min_post_length: int, start_date: int, end_date: int, max_expression_depth: int = 2500) -> duckdb.DuckDBPyConnection:
+    """Create a filtered database connection and load only the necessary data."""
     # List all files in the directory
     all_files = os.listdir(parquet_directory)
     
@@ -107,7 +107,7 @@ def create_database_connection(parquet_directory: str, table_name: str, columns:
         except Exception as e:
             print(f"Error reading schema of file {file}: {e}")
     
-    print(valid_files)
+    # print(valid_files)
     files = [f'{parquet_directory}/{file}' for file in valid_files]
     con = duckdb.connect(database=':memory:')
     con.execute(f"SET max_expression_depth TO {max_expression_depth}")
@@ -115,7 +115,21 @@ def create_database_connection(parquet_directory: str, table_name: str, columns:
     
     # Define the schema with the specified columns
     columns_str = ', '.join(columns)
-    sql_query = f"CREATE TABLE {table_name} AS SELECT {columns_str} FROM read_parquet([{query_files}], union_by_name=True)"
+    
+    # only load in the database what is necessary
+    sql_query = f"""
+    CREATE TABLE {table_name} AS 
+    SELECT {columns_str} 
+    FROM read_parquet([{query_files}], union_by_name=True)
+    WHERE LENGTH(title) > {min_post_length}
+      AND score > {min_score}
+      AND selftext NOT LIKE '%[deleted]%'
+      AND selftext NOT LIKE '%[removed]%'
+      AND media = FALSE 
+      AND {start_date} < created_utc 
+      AND created_utc < {end_date}
+    """
+    
     try:
         con.execute(sql_query)
     except duckdb.ConversionException as e:

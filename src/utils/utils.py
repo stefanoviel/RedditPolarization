@@ -89,19 +89,22 @@ def sample_hdf5(input_filename, output_filename, sample_fraction=0.1):
 
 def create_database_connection(parquet_directory: str, table_name: str, columns: list) -> duckdb.DuckDBPyConnection:
     """Create and return a database connection using the provided configuration."""
-    files = [f'{parquet_directory}/{file}' for file in os.listdir(parquet_directory)]
+    # List all files in the directory
+    all_files = os.listdir(parquet_directory)
+    
+    # Filter files to include only those before RS_2022-10_0.parquet.snappy
+    # after this date media started being saved in a different format
+    valid_files = [file for file in all_files if file < 'RS_2022-10_0.parquet.snappy']
+    files = [f'{parquet_directory}/{file}' for file in valid_files]
+    
     con = duckdb.connect(database=':memory:')
     query_files = ', '.join(f"'{f}'" for f in files)
     
-    # Define the schema with media as BOOLEAN, and filter out rows where media is not a boolean
-    columns_str = ', '.join(f"{col}" if col != "media" else "media" for col in columns)
-    sql_query = f"""
-    CREATE TABLE {table_name} AS 
-    SELECT {columns_str} 
-    FROM read_parquet([{query_files}], union_by_name=True)
-    WHERE typeof(media) = 'BOOLEAN'
-    """
-    # ignoring the rows where media is not a boolean
+    # Define the schema with the specified columns
+    columns_str = ', '.join(columns)
+    sql_query = f"CREATE TABLE {table_name} AS SELECT {columns_str} FROM read_parquet([{query_files}], union_by_name=True)"
+
+    print(sql_query)
     
     try:
         con.execute(sql_query)
@@ -110,7 +113,6 @@ def create_database_connection(parquet_directory: str, table_name: str, columns:
         raise
     
     return con
-
 
 def load_model_and_tokenizer(model_name):
     """Initialize the model and tokenizer."""

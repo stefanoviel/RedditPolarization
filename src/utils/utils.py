@@ -3,6 +3,7 @@ import h5py
 import duckdb
 import json
 import numpy as np
+import pyarrow.parquet as pq
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
@@ -87,25 +88,34 @@ def sample_hdf5(input_filename, output_filename, sample_fraction=0.1):
                     print(f"Not enough data to sample in dataset {dataset_name}")
 
 
-def create_database_connection(parquet_directory: str, table_name: str, columns: list) -> duckdb.DuckDBPyConnection:
+def create_database_connection(parquet_directory: str, table_name: str, columns: list, max_expression_depth: int = 2500) -> duckdb.DuckDBPyConnection:
     """Create and return a database connection using the provided configuration."""
     # List all files in the directory
     all_files = os.listdir(parquet_directory)
     
-    # Filter files to include only those before RS_2022-10_0.parquet.snappy
-    # after this date media started being saved in a different format
-    valid_files = [file for file in all_files if file < 'RS_2022-10_0.parquet.snappy']
-    files = [f'{parquet_directory}/{file}' for file in valid_files]
+    valid_files = []
+    for file in all_files:
+        file_path = f'{parquet_directory}/{file}'
+        try:
+            # Read the schema of the Parquet file
+            parquet_file = pq.ParquetFile(file_path)
+            schema = parquet_file.schema.to_arrow_schema()
+            # Check if 'media' field exists and is of boolean type
+            if schema.get_field_index('media') != -1 and schema.field('media').type == 'bool':
+                valid_files.append(file)
+            del parquet_file
+        except Exception as e:
+            print(f"Error reading schema of file {file}: {e}")
     
+    print(valid_files)
+    files = [f'{parquet_directory}/{file}' for file in valid_files]
     con = duckdb.connect(database=':memory:')
+    con.execute(f"SET max_expression_depth TO {max_expression_depth}")
     query_files = ', '.join(f"'{f}'" for f in files)
     
     # Define the schema with the specified columns
     columns_str = ', '.join(columns)
     sql_query = f"CREATE TABLE {table_name} AS SELECT {columns_str} FROM read_parquet([{query_files}], union_by_name=True)"
-
-    print(sql_query)
-    
     try:
         con.execute(sql_query)
     except duckdb.ConversionException as e:
@@ -113,6 +123,7 @@ def create_database_connection(parquet_directory: str, table_name: str, columns:
         raise
     
     return con
+
 
 def load_model_and_tokenizer(model_name):
     """Initialize the model and tokenizer."""

@@ -26,7 +26,7 @@ from gensim.corpora import Dictionary
 from gensim.utils import simple_preprocess
 
 from src.tf_idf import  TF_IDF_matrix, extract_top_words
-from src.utils.utils import create_filtered_database_connection, load_json, save_h5py, load_h5py, save_json
+from src.utils.utils import connect_to_existing_database, load_json, save_h5py, load_h5py, save_json
 import igraph as ig
 import leidenalg
 from tqdm import tqdm
@@ -41,18 +41,10 @@ from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import fcluster
 
 
-def get_random_posts(REDDIT_DATA_DIR, TABLE_NAME, MIN_SCORE, MIN_POST_LENGTH, n_posts, START_DATE, END_DATE):
-    con =  create_filtered_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"], MIN_SCORE, MIN_POST_LENGTH, START_DATE, END_DATE)
+def get_random_posts(DATABASE_PATH, TABLE_NAME):
+    con =  connect_to_existing_database(DATABASE_PATH)
     
-    query = f"""SELECT title, selftext
-            FROM {TABLE_NAME}
-            WHERE LENGTH(title) > {MIN_POST_LENGTH}
-            AND score > {MIN_SCORE}
-            AND selftext NOT LIKE '%[deleted]%'
-            AND selftext NOT LIKE '%[removed]%'
-            AND media = FALSE 
-            ORDER BY RANDOM() LIMIT {n_posts}
-            """
+    query = f"""SELECT title, selftext FROM {TABLE_NAME}"""
     
     cursor = con.execute(query)
     title_selftext = cursor.fetchall()
@@ -83,11 +75,11 @@ def get_random_posts(REDDIT_DATA_DIR, TABLE_NAME, MIN_SCORE, MIN_POST_LENGTH, n_
 
 #     print(f"Coherence: {coherence}")
 
-def compute_coherence(TFIDF_FILE, REDDIT_DATA_DIR, TABLE_NAME, MIN_SCORE, MIN_POST_LENGTH, N_POSTS, START_DATE, END_DATE):
+def compute_coherence(TFIDF_FILE, DATABASE_PATH):
 
 
     tf_idf_dictionary = load_json(TFIDF_FILE)
-    texts = get_random_posts(REDDIT_DATA_DIR, TABLE_NAME, MIN_SCORE, MIN_POST_LENGTH, N_POSTS, START_DATE, END_DATE)
+    texts = get_random_posts(DATABASE_PATH)
     dictionary = corpora.Dictionary([simple_preprocess(text) for text in texts])
     corpus = [dictionary.doc2bow(simple_preprocess(text)) for text in texts]
 

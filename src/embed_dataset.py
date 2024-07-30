@@ -16,7 +16,7 @@ import h5py
 from tqdm import tqdm
 import langid
 
-from src.utils.utils import create_filtered_database_connection
+from src.utils.utils import create_filtered_database
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
     
 
@@ -123,10 +123,10 @@ def initialize_h5_file(file_path: str, embedding_dim: int, embeddings_db_name: s
     return file_path
 
 
-def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, PROCESSED_REDDIT_DATA: str, MIN_SCORE: int, MIN_POST_LENGTH: int, EMBEDDING_DB_NAME:str, IDS_DB_NAME:str, START_DATE: int, END_DATE: int):
+def create_and_save_embeddings(REDDIT_DATA_DIR: str, MODEL_NAME: str, TABLE_NAME: str, MODEL_BATCH_SIZE: int, PROCESSED_REDDIT_DATA: str, MIN_SCORE: int, MIN_POST_LENGTH: int, EMBEDDING_DB_NAME:str, IDS_DB_NAME:str, START_DATE: int, END_DATE: int, DATABASE_PATH: str):
     """Fetch data in batches from db, generate embeddings, and save them incrementally along with their corresponding IDs."""
     model = initialize_model(MODEL_NAME)
-    con =  create_filtered_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"], MIN_SCORE, MIN_POST_LENGTH, START_DATE, END_DATE)
+    con =  create_filtered_database(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"], MIN_SCORE, MIN_POST_LENGTH, START_DATE, END_DATE, DATABASE_PATH)
     
     h5_file = None
     total_processed = 0

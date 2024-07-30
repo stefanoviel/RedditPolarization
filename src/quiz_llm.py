@@ -26,7 +26,7 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-from src.utils.utils import create_filtered_database_connection, load_json, load_h5py, load_model_and_tokenizer, create_tokenized_prompt, generate_response
+from src.utils.utils import connect_to_existing_database, load_json, load_h5py, load_model_and_tokenizer, create_tokenized_prompt, generate_response
 
 def get_random_cluster_post(con, ids, clusters, TABLE_NAME):
 
@@ -74,12 +74,12 @@ def generate_quiz(con, ids, clusters, topic_description, TABLE_NAME, n_options=5
 
     return questions
 
-def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, TFIDF_FILE, REDDIT_DATA_DIR, LLM_NAME, NUMBER_OF_OPTIONS, MIN_SCORE, MIN_POST_LENGTH, START_DATE, END_DATE): 
+def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, TFIDF_FILE, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS): 
 
     topic_description = load_json(TFIDF_FILE)
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
     post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
-    con =  create_filtered_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"], MIN_SCORE, MIN_POST_LENGTH, START_DATE, END_DATE)
+    con =  connect_to_existing_database(DATABASE_PATH)
     questions = generate_quiz(con, ids, post_cluster_assignment, topic_description, TABLE_NAME, NUMBER_OF_OPTIONS)
 
     model, tokenizer = load_model_and_tokenizer(LLM_NAME)

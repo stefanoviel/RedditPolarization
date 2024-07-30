@@ -88,8 +88,9 @@ def sample_hdf5(input_filename, output_filename, sample_fraction=0.1):
                     print(f"Not enough data to sample in dataset {dataset_name}")
 
 
-def create_filtered_database_connection(parquet_directory: str, table_name: str, columns: list, min_score: int, min_post_length: int, start_date: int, end_date: int, max_expression_depth: int = 2500) -> duckdb.DuckDBPyConnection:
-    """Create a filtered database connection and load only the necessary data."""
+
+def create_filtered_database(parquet_directory: str, table_name: str, columns: list, min_score: int, min_post_length: int, start_date: int, end_date: int, database_path: str, max_expression_depth: int = 2500) -> duckdb.DuckDBPyConnection:
+    """Create a filtered database connection and load only the necessary data, saving it to disk."""
     # List all files in the directory
     all_files = os.listdir(parquet_directory)
     
@@ -109,7 +110,7 @@ def create_filtered_database_connection(parquet_directory: str, table_name: str,
     
     # print(valid_files)
     files = [f'{parquet_directory}/{file}' for file in valid_files]
-    con = duckdb.connect(database=':memory:')
+    con = duckdb.connect(database=database_path)
     con.execute(f"SET max_expression_depth TO {max_expression_depth}")
     query_files = ', '.join(f"'{f}'" for f in files)
     
@@ -137,6 +138,20 @@ def create_filtered_database_connection(parquet_directory: str, table_name: str,
         raise
     
     return con
+
+
+def connect_to_existing_database(database_path: str) -> duckdb.DuckDBPyConnection:
+    """
+    Connect to an existing DuckDB database given the path where it is saved.
+    """
+    try:
+        # Connect to the existing database
+        con = duckdb.connect(database=database_path, read_only=False)
+        print(f"Successfully connected to the database at {database_path}")
+        return con
+    except Exception as e:
+        print(f"Error connecting to the database at {database_path}: {e}")
+        raise
 
 
 def load_model_and_tokenizer(model_name):

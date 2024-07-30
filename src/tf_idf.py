@@ -15,7 +15,7 @@ import cuml
 import pandas as pd
 from tqdm import tqdm
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-from src.utils.utils import create_filtered_database_connection, load_json, save_h5py, load_h5py, save_json
+from src.utils.utils import connect_to_existing_database, load_json, save_h5py, load_h5py, save_json
 
 from cuml.common import logger
 logger.set_level(logger.level_error)
@@ -93,12 +93,12 @@ def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
 
     return tfidf_matrix, feature_names
 
-def run_tf_idf(REDDIT_DATA_DIR:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int, MIN_SCORE:int, MIN_POST_LENGTH:int, START_DATE:int, END_DATE:int):
+def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int):
     """Main function to compute the TF-IDF matrix and adjacency matrix."""
-    con =  create_filtered_database_connection(REDDIT_DATA_DIR, TABLE_NAME, ["author", "id", "title", "selftext", "score", "num_comments", "subreddit", 'created_utc', "media"], MIN_SCORE, MIN_POST_LENGTH, START_DATE, END_DATE)
+
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
     post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
-
+    con =  connect_to_existing_database(DATABASE_PATH)
     cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
     iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME)
     tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)

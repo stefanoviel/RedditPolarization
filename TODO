@@ -19,5 +19,6 @@ TODO:
 nice memory logging in understand what is the limit
 `
 
-
-
+goes out of memory
+* something different other than loading everythin in memory => load in file
+* how much memory is it needed? 

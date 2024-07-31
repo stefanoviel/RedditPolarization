@@ -110,15 +110,30 @@ def create_filtered_database(parquet_directory: str, table_name: str, columns: l
     con = duckdb.connect(database=database_path)
     con.execute(f"SET max_expression_depth TO {max_expression_depth}")
     
+    # Define the schema with column names and types
+    column_types = {
+        "author": "VARCHAR",
+        "id": "VARCHAR",
+        "title": "VARCHAR",
+        "selftext": "VARCHAR",
+        "score": "INTEGER",
+        "num_comments": "INTEGER",
+        "subreddit": "VARCHAR",
+        "created_utc": "BIGINT",
+        "media": "BOOLEAN"
+    }
+    columns_with_types = ', '.join(f"{col} {column_types[col]}" for col in columns)
+    
     # Create table if not exists
     con.execute(f"DROP TABLE IF EXISTS {table_name}")
-    con.execute(f"CREATE TABLE {table_name} ({', '.join(columns)})")
+    con.execute(f"CREATE TABLE {table_name} ({columns_with_types})")
     
     # Process files in chunks
-    chunk_size = 200  # Adjust chunk size based on your memory constraints
+    chunk_size = 100  # Adjust chunk size based on your memory constraints
     for i in range(0, len(valid_files), chunk_size):
         chunk_files = valid_files[i:i+chunk_size]
         query_files = ', '.join(f"'{f}'" for f in chunk_files)
+        print(query_files)
         
         # Define the schema with the specified columns
         columns_str = ', '.join(columns)
@@ -144,6 +159,7 @@ def create_filtered_database(parquet_directory: str, table_name: str, columns: l
             raise
     
     return con
+
 
 
 

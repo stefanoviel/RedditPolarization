@@ -41,11 +41,11 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids:dict, 
     Yield the title and selftext for all the posts in each cluster by executing a database query for each cluster.
     """
     # Execute a query for each cluster and yield results
-    for cluster, cluster_ids in cluster_to_ids.items():
+    for cluster, ids in cluster_to_ids.items():
         if int(cluster) != -1:  
-            placeholders = ','.join(['?'] * len(cluster_ids))  # Prepare placeholders for SQL query
+            placeholders = ','.join(['?'] * len(ids))  # Prepare placeholders for SQL query
             query = f"SELECT title, selftext FROM {TABLE_NAME} WHERE id IN ({placeholders})"
-            cursor = con.execute(query, cluster_ids)
+            cursor = con.execute(query, ids)
             posts = cursor.fetchall()
             all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
             yield all_posts_in_cluster

@@ -88,7 +88,6 @@ def sample_hdf5(input_filename, output_filename, sample_fraction=0.1):
                     print(f"Not enough data to sample in dataset {dataset_name}")
 
 
-
 def create_filtered_database(parquet_directory: str, table_name: str, columns: list, min_score: int, min_post_length: int, start_date: int, end_date: int, database_path: str, max_expression_depth: int = 2500) -> duckdb.DuckDBPyConnection:
     """Create a filtered database connection and load only the necessary data, saving it to disk."""
     # List all files in the directory
@@ -108,7 +107,6 @@ def create_filtered_database(parquet_directory: str, table_name: str, columns: l
         except Exception as e:
             print(f"Error reading schema of file {file}: {e}")
     
-    # print(valid_files)
     files = [f'{parquet_directory}/{file}' for file in valid_files]
     con = duckdb.connect(database=database_path)
     con.execute(f"SET max_expression_depth TO {max_expression_depth}")
@@ -119,6 +117,8 @@ def create_filtered_database(parquet_directory: str, table_name: str, columns: l
     
     # only load in the database what is necessary
     sql_query = f"""
+    DROP TABLE IF EXISTS {table_name};
+    
     CREATE TABLE {table_name} AS 
     SELECT {columns_str} 
     FROM read_parquet([{query_files}], union_by_name=True)
@@ -128,7 +128,7 @@ def create_filtered_database(parquet_directory: str, table_name: str, columns: l
       AND selftext NOT LIKE '%[removed]%'
       AND media = FALSE 
       AND {start_date} < created_utc 
-      AND created_utc < {end_date}
+      AND created_utc < {end_date};
     """
     
     try:
@@ -138,6 +138,7 @@ def create_filtered_database(parquet_directory: str, table_name: str, columns: l
         raise
     
     return con
+
 
 
 def connect_to_existing_database(database_path: str) -> duckdb.DuckDBPyConnection:

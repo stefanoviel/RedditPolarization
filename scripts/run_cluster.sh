@@ -9,7 +9,7 @@
 module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6
 echo "loaded stack"
 
-source .venv/bin/activate
+source .my_venv/bin/activate
 export OMP_NUM_THREADS=16
 ulimit -n 4096  # to allow duckdb to open all files
 

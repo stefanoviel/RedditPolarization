@@ -102,40 +102,46 @@ def create_filtered_database(parquet_directory: str, table_name: str, columns: l
             schema = parquet_file.schema.to_arrow_schema()
             # Check if 'media' field exists and is of boolean type
             if schema.get_field_index('media') != -1 and schema.field('media').type == 'bool':
-                valid_files.append(file)
+                valid_files.append(file_path)
             del parquet_file
         except Exception as e:
             print(f"Error reading schema of file {file}: {e}")
     
-    files = [f'{parquet_directory}/{file}' for file in valid_files]
     con = duckdb.connect(database=database_path)
     con.execute(f"SET max_expression_depth TO {max_expression_depth}")
-    query_files = ', '.join(f"'{f}'" for f in files)
     
-    # Define the schema with the specified columns
-    columns_str = ', '.join(columns)
+    # Create table if not exists
+    con.execute(f"DROP TABLE IF EXISTS {table_name}")
+    con.execute(f"CREATE TABLE {table_name} ({', '.join(columns)})")
     
-    # only load in the database what is necessary
-    sql_query = f"""
-    DROP TABLE IF EXISTS {table_name};
-    
-    CREATE TABLE {table_name} AS 
-    SELECT {columns_str} 
-    FROM read_parquet([{query_files}], union_by_name=True)
-    WHERE LENGTH(title) > {min_post_length}
-      AND score > {min_score}
-      AND selftext NOT LIKE '%[deleted]%'
-      AND selftext NOT LIKE '%[removed]%'
-      AND media = FALSE 
-      AND {start_date} < created_utc 
-      AND created_utc < {end_date};
-    """
-    
-    try:
-        con.execute(sql_query)
-    except duckdb.ConversionException as e:
-        print(f"Error creating table {table_name}: {e}")
-        raise
+    # Process files in chunks
+    chunk_size = 200  # Adjust chunk size based on your memory constraints
+    for i in range(0, len(valid_files), chunk_size):
+        chunk_files = valid_files[i:i+chunk_size]
+        query_files = ', '.join(f"'{f}'" for f in chunk_files)
+        
+        # Define the schema with the specified columns
+        columns_str = ', '.join(columns)
+        
+        # Filter and insert data in chunks
+        sql_query = f"""
+        INSERT INTO {table_name}
+        SELECT {columns_str} 
+        FROM read_parquet([{query_files}], union_by_name=True)
+        WHERE LENGTH(title) > {min_post_length}
+          AND score > {min_score}
+          AND selftext NOT LIKE '%[deleted]%'
+          AND selftext NOT LIKE '%[removed]%'
+          AND media = FALSE 
+          AND {start_date} < created_utc 
+          AND created_utc < {end_date};
+        """
+        
+        try:
+            con.execute(sql_query)
+        except duckdb.ConversionException as e:
+            print(f"Error processing files {chunk_files}: {e}")
+            raise
     
     return con
 

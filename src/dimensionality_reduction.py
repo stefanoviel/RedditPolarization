@@ -63,6 +63,8 @@ def UMAP_transform_partial_fit(
     Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
     """
 
+    print("subset size for partial fit", PARTIAL_FIT_DIM_REDUCTION)
+    
     umap_model = UMAP(
         n_neighbors=UMAP_N_Neighbors,
         n_components=UMAP_COMPONENTS,

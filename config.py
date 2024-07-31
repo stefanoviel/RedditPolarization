@@ -1,7 +1,7 @@
 import os
 import time
 
-EXPERIMENT_NAME = "2010_2023"
+EXPERIMENT_NAME = "testing_different_subsets"
 OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 # OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
@@ -43,7 +43,7 @@ SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
 HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH = [0.0005, 0.0025, 0.001, 0.005, 0.01]
-HDBS_MIN_SAMPLES_SEARCH = [5, 10, 20]
+HDBS_MIN_SAMPLES_SEARCH = [10] #[5, 10, 20]
 PARTIAL_FIT_CLUSTER = 0.1  # it might not be used, depending on the employed function
 
 # tfidf
@@ -81,3 +81,4 @@ RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]
 # quiz & coherence
 NUMBER_OF_OPTIONS = 14
 N_POSTS = 1e7
+COHERENCE_FILE = os.path.join(OUTPUT_DIR, "coherence.json")

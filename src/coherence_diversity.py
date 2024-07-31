@@ -36,50 +36,49 @@ from gensim import corpora
 
 import numpy as np
 import pandas as pd
+import json
+from datetime import datetime
 from scipy.cluster.hierarchy import dendrogram, linkage
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import fcluster
 
 
-def get_random_posts(DATABASE_PATH, TABLE_NAME):
-    con =  connect_to_existing_database(DATABASE_PATH)
+def get_random_posts(DATABASE_PATH, TABLE_NAME, num_posts):
+    con = connect_to_existing_database(DATABASE_PATH)
     
-    query = f"""SELECT title, selftext FROM {TABLE_NAME}"""
+    query = f"""
+    SELECT title, selftext FROM {TABLE_NAME}
+    ORDER BY RANDOM()
+    LIMIT {num_posts}
+    """
     
     cursor = con.execute(query)
     title_selftext = cursor.fetchall()
     posts = [title + " " + selftext for title, selftext in title_selftext]
 
+    con.close()
+    
     return posts
 
-# def compute_coherence(TFIDF_FILE, REDDIT_DATA_DIR, TABLE_NAME, MIN_SCORE, MIN_POST_LENGTH, N_POSTS):
+def load_json(file_path):
+    with open(file_path, 'r') as file:
+        return json.load(file)
 
-#     tf_idf_dictionary = load_json(TFIDF_FILE)
+def append_to_json(file_path, data):
+    if not os.path.exists(file_path):
+        with open(file_path, 'w') as file:
+            json.dump([], file)
 
-#     wiki_corpus = api.load('wiki-english-20171001')
-#     texts = []
-#     for n, text in enumerate(wiki_corpus):
-#         texts.extend([simple_preprocess(string) for string in text['section_texts']])
-#         if n % 1000 == 0:
-#             print(f"Processed {n} documents from Wikipedia corpus")
-#         if n == 10000:
-#             break
+    with open(file_path, 'r+') as file:
+        file_data = json.load(file)
+        file_data.append(data)
+        file.seek(0)
+        json.dump(file_data, file, indent=4)
 
-#     texts = get_random_posts(REDDIT_DATA_DIR, TABLE_NAME, MIN_SCORE, MIN_POST_LENGTH, N_POSTS)
-#     dictionary = Dictionary(texts)
-
-#     tf_idf_topics = [topic for topic in tf_idf_dictionary.values()]
-
-#     cm = CoherenceModel(topics=tf_idf_topics, texts=texts, dictionary=dictionary, coherence='u_mass')
-#     coherence = cm.get_coherence_per_topic()
-
-#     print(f"Coherence: {coherence}")
-
-def compute_coherence(TFIDF_FILE, DATABASE_PATH):
-
+def compute_coherence(TFIDF_FILE, DATABASE_PATH, TABLE_NAME, COHERENCE_FILE, N_POSTS):
 
     tf_idf_dictionary = load_json(TFIDF_FILE)
-    texts = get_random_posts(DATABASE_PATH)
+    texts = get_random_posts(DATABASE_PATH, TABLE_NAME, N_POSTS)
     dictionary = corpora.Dictionary([simple_preprocess(text) for text in texts])
     corpus = [dictionary.doc2bow(simple_preprocess(text)) for text in texts]
 
@@ -87,8 +86,20 @@ def compute_coherence(TFIDF_FILE, DATABASE_PATH):
 
     cm = CoherenceModel(topics=tf_idf_topics, corpus=corpus, dictionary=dictionary, coherence='u_mass')
     coherence = cm.get_coherence_per_topic()
+    overall_coherence = cm.get_coherence()
+    
     print(coherence)
-    print(f"Coherence: {cm.get_coherence()}")
+    print(f"Coherence: {overall_coherence}")
+
+    current_date = datetime.now().isoformat()
+    coherence_data = {
+        "tf_idf_file": TFIDF_FILE,
+        "date": current_date,
+        "coherence_per_topic": coherence,
+        "overall_coherence": overall_coherence
+    }
+
+    append_to_json(COHERENCE_FILE, coherence_data)
 
 
 if __name__ == "__main__":

@@ -2,17 +2,17 @@
 #SBATCH --job-name=filtered_pipeline
 #SBATCH --nodes=1
 #SBATCH --gpus=rtx_4090:1
-#SBATCH --mem-per-cpu=70GB
-#SBATCH --time=08:00:00
+#SBATCH --mem-per-cpu=60GB
+#SBATCH --time=48:00:00
+#SBATCH --output=log_scripts/%x-%j.out
 
-module load gcc/8.2.0 python_gpu/3.11.2 cuda/11.2.2
+module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6
+echo "loaded stack"
 
-source .venv/bin/activate
+source .my_venv/bin/activate
+export OMP_NUM_THREADS=16
+ulimit -n 4096  # to allow duckdb to open all files
 
-# Define the array of subset sizes
-subset_sizes=(0.1 0.2 0.4 0.6 0.8 0.9 1.0)
-
-rm output/testing_different_subsets/coherence.json
 
 # Loop through each subset size and run the dimensionality reduction script
 for size in "${subset_sizes[@]}"

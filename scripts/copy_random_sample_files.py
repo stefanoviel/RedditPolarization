@@ -1,6 +1,6 @@
 import os
 import random
-import shutil
+import subprocess
 
 def copy_random_sample_files(source_folder, destination_folder, sample_size):
     # Ensure the source folder exists
@@ -24,7 +24,8 @@ def copy_random_sample_files(source_folder, destination_folder, sample_size):
     # Copy the sampled files to the destination folder
     for file_name in sampled_files:
         full_file_name = os.path.join(source_folder, file_name)
-        shutil.copy(full_file_name, destination_folder)
+        destination_file_name = os.path.join(destination_folder, file_name)
+        subprocess.run(['cp', full_file_name, destination_file_name])
         print(f"Copied '{file_name}' to '{destination_folder}'")
 
 # Example usage

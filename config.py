@@ -8,7 +8,7 @@ if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 
 # datasets names
-REDDIT_DATA_DIR = 'data/parquet'
+REDDIT_DATA_DIR = 'data/random_sample'
 # REDDIT_DATA_DIR = 'data/parquet'
 DATABASE_PATH = os.path.join(OUTPUT_DIR, "filtered_reddit_data.db")
 PROCESSED_REDDIT_DATA = os.path.join(OUTPUT_DIR, "reddit_data.h5")

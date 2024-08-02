@@ -159,7 +159,7 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: l
 
     data_size = len(data)
     logger.info(f"Data size: {data_size}")
-    best_params = {'min_cluster_size': None, 'min_samples': None, 'dbcv': -1}
+    best_params = {'min_cluster_size': None, 'min_samples': None, 'dbcv': -1, 'percentage_non_noise': -1}
     DBCV_scores = []
 
     for min_cluster_size_percentage in HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH:
@@ -183,7 +183,8 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: l
                 best_params.update({
                     'min_cluster_size': min_cluster_size,
                     'min_samples': min_elements_core_points,
-                    'dbcv': dbcv
+                    'dbcv': dbcv, 
+                    'percentage_non_noise': percentage_non_noise
                 })
 
             logger.info(f"min_cluster_size: {min_cluster_size}, min_samples: {min_elements_core_points}, "
@@ -192,7 +193,7 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: l
             DBCV_scores.append(dbcv)
 
     logger.info(f"Best min_cluster_size: {best_params['min_cluster_size']}, "
-                f"Best min_samples: {best_params['min_samples']}, Best dbcv: {best_params['dbcv']}")
+                f"Best min_samples: {best_params['min_samples']}, Best dbcv: {best_params['dbcv']}, percentage_non_noise: {best_params['percentage_non_noise']}")
 
     return best_params, DBCV_scores
 

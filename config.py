@@ -43,7 +43,7 @@ SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
 HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH = [0.0005, 0.0025, 0.001, 0.005, 0.01]
-HDBS_MIN_SAMPLES_SEARCH = [10] #[5, 10, 20]
+HDBS_MIN_SAMPLES_SEARCH = [5, 10, 20]
 PARTIAL_FIT_CLUSTER = 0.1  # it might not be used, depending on the employed function
 
 # tfidf
@@ -79,6 +79,8 @@ ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")
 RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]
 
 # quiz & coherence
-NUMBER_OF_OPTIONS = 14
+NUMBER_OF_OPTIONS = 5
 N_POSTS = 1e7
 COHERENCE_FILE = os.path.join(OUTPUT_DIR, "coherence.json")
+TF_IDF_FOLDER= os.path.join(OUTPUT_DIR, "tf_idfs")
+TEST_LLM_ACCURACY_FILE = os.path.join(OUTPUT_DIR, "test_llm_accuracy.json")

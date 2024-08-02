@@ -26,7 +26,7 @@ from gensim.corpora import Dictionary
 from gensim.utils import simple_preprocess
 
 from src.tf_idf import  TF_IDF_matrix, extract_top_words
-from src.utils.utils import connect_to_existing_database, load_json, save_h5py, load_h5py, save_json
+from src.utils.utils import connect_to_existing_database, load_json, save_h5py, load_h5py, save_json, append_to_json
 import igraph as ig
 import leidenalg
 from tqdm import tqdm
@@ -54,6 +54,7 @@ def get_random_posts(DATABASE_PATH, TABLE_NAME, num_posts):
     
     cursor = con.execute(query)
     title_selftext = cursor.fetchall()
+    print('retrived n posts:', len(title_selftext))
     posts = [title + " " + selftext for title, selftext in title_selftext]
 
     con.close()
@@ -64,22 +65,14 @@ def load_json(file_path):
     with open(file_path, 'r') as file:
         return json.load(file)
 
-def append_to_json(file_path, data):
-    if not os.path.exists(file_path):
-        with open(file_path, 'w') as file:
-            json.dump([], file)
 
-    with open(file_path, 'r+') as file:
-        file_data = json.load(file)
-        file_data.append(data)
-        file.seek(0)
-        json.dump(file_data, file, indent=4)
 
 def compute_coherence(TFIDF_FILE, DATABASE_PATH, TABLE_NAME, COHERENCE_FILE, N_POSTS):
 
     tf_idf_dictionary = load_json(TFIDF_FILE)
     texts = get_random_posts(DATABASE_PATH, TABLE_NAME, N_POSTS)
     dictionary = corpora.Dictionary([simple_preprocess(text) for text in texts])
+    print(dictionary)
     corpus = [dictionary.doc2bow(simple_preprocess(text)) for text in texts]
 
     tf_idf_topics = [topic for topic in tf_idf_dictionary.values()]

@@ -20,13 +20,12 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction import text
 import numpy as np
 import cuml
-import json
 import pandas as pd
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-from src.utils.utils import connect_to_existing_database, load_json, load_h5py, load_model_and_tokenizer, create_tokenized_prompt, generate_response
+from src.utils.utils import connect_to_existing_database, load_json, load_h5py, load_model_and_tokenizer, create_tokenized_prompt, generate_response, append_to_json
 
 def get_random_cluster_post(con, ids, clusters, TABLE_NAME):
 
@@ -74,7 +73,7 @@ def generate_quiz(con, ids, clusters, topic_description, TABLE_NAME, n_options=5
 
     return questions
 
-def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, TFIDF_FILE, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS): 
+def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, TFIDF_FILE, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS, TEST_LLM_ACCURACY_FILE): 
 
     topic_description = load_json(TFIDF_FILE)
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
@@ -90,7 +89,11 @@ def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, T
         model_inputs = create_tokenized_prompt(prompt, tokenizer, model.device)
         generated_ids = generate_response(model, model_inputs)
         response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
-        response = json.loads(response)
+        try:
+            response = json.loads(response)
+        except Exception as e:
+            continue
+
         if response['answer'] == question['answer']:
             correct_answers_count += 1
         print(prompt)
@@ -98,9 +101,31 @@ def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, T
         print(f"Response: {response['answer']}")
         print("=======================================================================")
 
+    accuracy  =  correct_answers_count/len(questions)
     print(f"Number of correct answers: {correct_answers_count}/{len(questions)}, accuracy: {correct_answers_count/len(questions)}")
+
+    accuracy_data = {
+        "tf_idf_file": TFIDF_FILE,
+        "number_of_correct_answers": correct_answers_count,
+        "number_of_questions": len(questions),
+        "accuracy": accuracy
+    }
+
+    append_to_json(TEST_LLM_ACCURACY_FILE, accuracy_data)
+
+
+
+def solve_multiple_quiz_save_accuracy(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS, TF_IDF_FOLDER, TEST_LLM_ACCURACY_FILE): 
+    accuracies = []
+    for tf_idf_file in os.listdir(TF_IDF_FOLDER):
+        tf_idf_path = os.path.join(TF_IDF_FOLDER, tf_idf_file)
+        print(tf_idf_path)
+        accuracy = solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, tf_idf_path, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS)
+        accuracies.append(accuracy)
+
+    with open(TEST_LLM_ACCURACY_FILE, 'w') as file:
+        json.dump(accuracies, file)
 
 
 if __name__ == "__main__": 
-    
-    run_function_with_overrides(solve_quiz, config)
+    run_function_with_overrides(solve_multiple_quiz_save_accuracy, config)

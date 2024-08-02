@@ -13,7 +13,7 @@ from src.clustering import hdbscan_cluster_data
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import run_tf_idf
 from src.coherence_diversity import compute_coherence
-
+from src.quiz_llm import solve_quiz
 
 def main(partial_fit_dim_reduction, tf_idf_file):
     config.PARTIAL_FIT_DIM_REDUCTION = partial_fit_dim_reduction
@@ -31,12 +31,14 @@ def main(partial_fit_dim_reduction, tf_idf_file):
     time_hdbscan = run_function_with_overrides(hdbscan_cluster_data, config)
     time_tfidf = run_function_with_overrides(run_tf_idf, config)
     time_coherence = run_function_with_overrides(compute_coherence, config)
+    time_quiz = run_function_with_overrides(solve_quiz, config)
 
     logger.info("-------------------------------")
     logger.info(f"Time for UMAP: {time_umap} s")
     logger.info(f"Time for HDBSCAN: {time_hdbscan} s")
     logger.info(f"Time for TF-IDF: {time_tfidf:,} s")
     logger.info(f"Time for coherence: {time_coherence} s")
+    logger.info(f"Time for quiz: {time_quiz} s")
 
 
 if __name__ == "__main__":

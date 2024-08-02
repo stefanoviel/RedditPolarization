@@ -17,31 +17,27 @@ def load_h5py(file_path: str, db_name:str) -> np.ndarray:
     return embeddings
 
 
-def get_indices_for_random_h5py_subset(filename: str, dataset_name: str, subset_fraction: float, batch_size: int = int(1e7)):
-    """
-    Generate indices for a random subset and yield them in batches.
-    """
+def get_indices_for_random_h5py_subset(filename: str, dataset_name, subset_fraction: float):
+    """Extract data points corresponding to indices"""
+
     with h5py.File(filename, "r") as file:
         dataset = file[dataset_name]
         total_samples = dataset.shape[0]
         num_samples = int(total_samples * subset_fraction)
 
-        indices = np.random.choice(total_samples, num_samples, replace=False)
-        indices.sort()
+        partial_fit_indices = np.random.choice(total_samples, num_samples, replace=False)
+        partial_fit_indices.sort()
 
-        # Yield indices in batches
-        for i in range(0, len(indices), batch_size):
-            yield indices[i:i+batch_size], total_samples, num_samples
+    return partial_fit_indices, total_samples, num_samples
 
 def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray) -> np.ndarray:
     """
-    Load specific indices from an HDF5 file into a NumPy array in batches.
+    Load specific indices from an HDF5 file into a NumPy array.
     """
     with h5py.File(file_path, "r") as file:
         dataset = file[db_name]
         data = dataset[indices]
     return data
-
 
 def load_with_indices_h5py_efficient(file_path: str, db_name: str, indices: np.ndarray) -> np.ndarray:
     """

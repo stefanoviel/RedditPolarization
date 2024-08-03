@@ -79,7 +79,7 @@ def UMAP_transform_partial_fit(
 
     # here we only load the necessary indices otherwise oom error
     sampled_features = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", partial_fit_indices)  
-    print("Time to load data", time.time() - s)
+    logger.info(f"Time to load data: {time.time() - s:.2f} s")
     execute_with_gpu_logging(umap_model.fit, sampled_features)
 
     # iterate over the rest of the data in chunks of subset_size and transform

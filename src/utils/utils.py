@@ -1,5 +1,8 @@
 import os
 import h5py
+import numpy as np
+from itertools import groupby
+from operator import itemgetter
 import duckdb
 import json
 import numpy as np
@@ -30,14 +33,39 @@ def get_indices_for_random_h5py_subset(filename: str, dataset_name, subset_fract
 
     return partial_fit_indices, total_samples, num_samples
 
-def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray) -> np.ndarray:
+
+
+def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray, batch_size: int = int(1e7)) -> np.ndarray:
     """
     Load specific indices from an HDF5 file into a NumPy array.
+    This function optimizes reading by batching indices into larger contiguous chunks.
     """
+    indices = np.sort(indices)
+    data = []
+
     with h5py.File(file_path, "r") as file:
         dataset = file[db_name]
-        data = dataset[indices]
-    return data
+        current_batch = []
+        last_index = indices[0]
+
+        for idx in indices:
+            if current_batch and (idx - last_index > 1 or len(current_batch) >= batch_size):
+                # If the index is not contiguous or the batch size limit is reached, read the current batch
+                start, end = current_batch[0], current_batch[-1] + 1
+                data.append(dataset[start:end])
+                current_batch = []
+
+            current_batch.append(idx)
+            last_index = idx
+
+        # Read the last batch
+        if current_batch:
+            start, end = current_batch[0], current_batch[-1] + 1
+            data.append(dataset[start:end])
+
+    return np.concatenate(data)
+
+
 
 def load_with_indices_h5py_efficient(file_path: str, db_name: str, indices: np.ndarray) -> np.ndarray:
     """

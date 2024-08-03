@@ -6,6 +6,7 @@ from operator import itemgetter
 import duckdb
 import json
 import numpy as np
+from tqdm import tqdm
 import pyarrow.parquet as pq
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -48,7 +49,7 @@ def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray, ba
         current_batch = []
         last_index = indices[0]
 
-        for idx in indices:
+        for idx in tqdm(indices):
             if current_batch and (idx - last_index > 1 or len(current_batch) >= batch_size):
                 # If the index is not contiguous or the batch size limit is reached, read the current batch
                 start, end = current_batch[0], current_batch[-1] + 1

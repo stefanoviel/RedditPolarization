@@ -91,7 +91,7 @@ def UMAP_transform_partial_fit(
     # subset size (derived from PARTIAL_FIT_DIM_REDUCTION) should be the maximum subset of data on which we can fit
     # given a certain GPU memory 
     result = None
-    for i in tqdm(range(0, total_samples, num_samples)):
+    for i in tqdm(range(0, total_samples, num_samples//2)): # transform takes more memory than fit
         indices = np.arange(i, min(i + num_samples, total_samples))
         chunk = load_with_indices_h5py_efficient(PROCESSED_REDDIT_DATA, "embeddings", indices)
         transformed_chunk = execute_with_gpu_logging(umap_model.transform, chunk)

@@ -1,5 +1,6 @@
 import os
 import sys
+import joblib
 
 # adding root directory to paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -47,7 +48,6 @@ def UMAP_transform_full_fit(
     transformed = local_model.fit_transform(features)
     save_h5py(transformed, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
-
 def UMAP_transform_partial_fit(
     PROCESSED_REDDIT_DATA: str,
     UMAP_N_Neighbors: int,
@@ -57,10 +57,11 @@ def UMAP_transform_partial_fit(
     NEGATIVE_SAMPLE_RATE: int,
     UMAP_N_EPOCHS: int,
     DIMENSIONALITY_REDUCTION_DB_NAME: str,
+    UMAP_MODEL_SAVE_PATH: str
 ) -> None:
     
     """
-    Load embeddings, sample a subset, fit UMAP on the subset, and transform the entire dataset.
+    Load embeddings, sample a subset, fit UMAP on the subset, save the model, and transform the entire dataset.
     """
 
     print("subset size for partial fit", PARTIAL_FIT_DIM_REDUCTION)
@@ -81,6 +82,10 @@ def UMAP_transform_partial_fit(
     sampled_features = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", partial_fit_indices)  
     logger.info(f"Time to load data: {time.time() - s:.2f} s")
     execute_with_gpu_logging(umap_model.fit, sampled_features)
+
+    # Save the fitted UMAP model
+    joblib.dump(umap_model, UMAP_MODEL_SAVE_PATH)
+    logger.info(f"UMAP model saved at {UMAP_MODEL_SAVE_PATH}")
 
     # iterate over the rest of the data in chunks of subset_size and transform
     # subset size (derived from PARTIAL_FIT_DIM_REDUCTION) should be the maximum subset of data on which we can fit

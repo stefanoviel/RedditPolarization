@@ -29,6 +29,7 @@ MODEL_BATCH_SIZE = 320_000
 
 # Dimensionality reduction 
 DIMENSIONALITY_REDUCTION_DB_NAME = "dimensional_reduction"
+UMAP_MODEL_SAVE_PATH = os.path.join(OUTPUT_DIR, "umap_model.joblib")
 UMAP_COMPONENTS = 5
 UMAP_N_Neighbors = 4 # increase this to get more global structure
 UMAP_MINDIST = 0

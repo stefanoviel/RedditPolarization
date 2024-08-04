@@ -20,19 +20,28 @@ def load_h5py(file_path: str, db_name:str) -> np.ndarray:
         embeddings = file[db_name][:]
     return embeddings
 
-
-def get_indices_for_random_h5py_subset(filename: str, dataset_name, subset_fraction: float):
-    """Extract data points corresponding to indices"""
-
+def get_number_of_samples_h5py(filename: str, dataset_name: str, subset_fraction: float) -> int:    
+    """Get the number of samples in the dataset and the number of samples to use for training"""
     with h5py.File(filename, "r") as file:
         dataset = file[dataset_name]
         total_samples = dataset.shape[0]
         num_samples = int(total_samples * subset_fraction)
+        
+    return total_samples, num_samples
+
+
+def get_indices_for_random_h5py_subset(filename: str, dataset_name, subset_fraction: float):
+    """Extract data points corresponding to indices"""
+
+    total_samples, num_samples = get_number_of_samples_h5py(filename, dataset_name, subset_fraction)
+
+    with h5py.File(filename, "r") as file:
+        dataset = file[dataset_name]
 
         partial_fit_indices = np.random.choice(total_samples, num_samples, replace=False)
         partial_fit_indices.sort()
 
-    return partial_fit_indices, total_samples, num_samples
+    return partial_fit_indices
 
 
 def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray, batch_size: int = int(1e7)) -> np.ndarray:

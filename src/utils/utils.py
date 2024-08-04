@@ -35,7 +35,6 @@ def get_indices_for_random_h5py_subset(filename: str, dataset_name, subset_fract
     return partial_fit_indices, total_samples, num_samples
 
 
-
 def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray, batch_size: int = int(1e7)) -> np.ndarray:
     """
     Load specific indices from an HDF5 file into a NumPy array.
@@ -46,6 +45,9 @@ def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray, ba
 
     with h5py.File(file_path, "r") as file:
         dataset = file[db_name]
+        dtype = np.float32  # Ensure the type is float32
+        feature_shape = dataset.shape[1:]  # Shape of the feature dimension(s)
+
         current_batch = []
         last_index = indices[0]
 
@@ -53,7 +55,9 @@ def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray, ba
             if current_batch and (idx - last_index > 1 or len(current_batch) >= batch_size):
                 # If the index is not contiguous or the batch size limit is reached, read the current batch
                 start, end = current_batch[0], current_batch[-1] + 1
-                data.append(dataset[start:end])
+                buffer = np.empty((end - start,) + feature_shape, dtype=dtype)
+                dataset.read_direct(buffer, np.s_[start:end])
+                data.append(buffer)
                 current_batch = []
 
             current_batch.append(idx)
@@ -62,27 +66,33 @@ def load_with_indices_h5py(file_path: str, db_name: str, indices: np.ndarray, ba
         # Read the last batch
         if current_batch:
             start, end = current_batch[0], current_batch[-1] + 1
-            data.append(dataset[start:end])
+            buffer = np.empty((end - start,) + feature_shape, dtype=dtype)
+            dataset.read_direct(buffer, np.s_[start:end])
+            data.append(buffer)
 
     return np.concatenate(data)
-
-
 
 def load_with_indices_h5py_efficient(file_path: str, db_name: str, indices: np.ndarray) -> np.ndarray:
     """
     Load specific indices from an HDF5 file into a NumPy array using an efficient block loading strategy.
-    It's necessary to to load everything into memory, otherwise it gets very slow.
+    It's necessary to load everything into memory, otherwise it gets very slow.
     """
     indices = np.array(indices)
     min_idx, max_idx = indices.min(), indices.max()
 
     with h5py.File(file_path, "r") as file:
         dataset = file[db_name]
-        data_block = dataset[min_idx:max_idx+1]  # +1 because max_idx is inclusive
+        dtype = np.float32  # Ensure the type is float32
+        feature_shape = dataset.shape[1:]  # Shape of the feature dimension(s)
+
+        data_block = np.empty((max_idx - min_idx + 1,) + feature_shape, dtype=dtype)
+        dataset.read_direct(data_block, np.s_[min_idx:max_idx+1])
 
     selected_data = data_block[indices - min_idx]
 
     return selected_data
+
+
 
 def save_h5py(data: np.ndarray, file_path: str, db_name: str):
     """

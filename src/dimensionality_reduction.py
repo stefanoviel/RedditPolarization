@@ -97,7 +97,8 @@ def UMAP_transform_partial_fit(
     # given a certain GPU memory 
     total_samples, num_samples = get_number_of_samples_h5py(PROCESSED_REDDIT_DATA, "embeddings", PARTIAL_FIT_DIM_REDUCTION)
     result = None
-    for i in tqdm(range(0, total_samples, num_samples//4)): # transform takes more memory than fit
+    num_samples = num_samples //4
+    for i in tqdm(range(0, total_samples, num_samples)): # transform takes more memory than fit
         indices = np.arange(i, min(i + num_samples, total_samples))
         chunk = load_with_indices_h5py_efficient(PROCESSED_REDDIT_DATA, "embeddings", indices)
         transformed_chunk = execute_with_gpu_logging(umap_model.transform, chunk)

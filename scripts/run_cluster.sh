@@ -2,7 +2,7 @@
 #SBATCH --job-name=filtered_pipeline
 #SBATCH --nodes=1
 #SBATCH --gpus=rtx_4090:1
-#SBATCH --mem-per-cpu=60GB
+#SBATCH --mem-per-cpu=200GB
 #SBATCH --time=48:00:00
 #SBATCH --output=log_scripts/%x-%j.out
 

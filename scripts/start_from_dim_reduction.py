@@ -17,7 +17,8 @@ from src.quiz_llm import solve_quiz
 
 def main(partial_fit_dim_reduction, tf_idf_file):
     config.PARTIAL_FIT_DIM_REDUCTION = partial_fit_dim_reduction
-    folder = os.path.join(config.OUTPUT_DIR, 'tf_idfs')
+    folder = os.path.join(config.OUTPUT_DIR, 'tf_idfs')  # create a folder to save all tf-idf file 
+    
     if not os.path.exists(folder):
         os.makedirs(folder)
     config.TFIDF_FILE = os.path.join(folder, tf_idf_file)

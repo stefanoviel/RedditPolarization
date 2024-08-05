@@ -54,32 +54,16 @@ TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
 
 # topic Naming
-LLM_NAME = "Qwen/Qwen2-7B-Instruct-GPTQ-Int8"
+LLM_NAME = "Qwen/Qwen2-7B-Instruct-GPTQ-Int4"
 TOPIC_NAMING_FILE = os.path.join(OUTPUT_DIR, "topic_naming.json")
-PROMPT = """ Given the following lists of words, each associated with a cluster number, identify a succinct topic that captures the essence of the words in each list. Below are some examples of how the output should be structured in JSON format.
-
-    Examples:
-    - Cluster 4: "game, team, season, like, time, year, player, play, games, 10" -> "Sports Analysis"
-    - Cluster -1: "new, like, time, know, game, people, think, make, good, really" -> "General Discussion"
-    - Cluster 32: "team, vs, game, twitch, tv, twitter, youtube, 00, logo, mt" -> "Live Streaming and Social Media"
-    - Cluster 24: "art, oc, painting, like, drawing, new, paint, pen, imgur, time" -> "Art and Drawing"
-
-    Your task is to find an appropriate topic for the list from cluster 0. Present your output in the following JSON format:
-
-    {{
-    "topic": "Your identified topic here"
-    }}
-
-    Please perform the same task for the list associated with cluster 0:
-    - Cluster 0: {list_of_words} ->
-
-    """
 
 # hierarchical topic discovery
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")
 RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]
 
 # quiz & coherence
+N_QUIZ = 100
+NUM_RUNS = 5 
 NUMBER_OF_OPTIONS = 5
 N_POSTS = 1e7
 COHERENCE_FILE = os.path.join(OUTPUT_DIR, "coherence.json")

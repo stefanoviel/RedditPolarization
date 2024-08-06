@@ -4,11 +4,12 @@ import time
 
 # Experiment name (check if we're on the cluster or not)
 if 'cluster' in os.getcwd():
-    EXPERIMENT_NAME = "2008_2023_big_subset"
+    EXPERIMENT_NAME = "2008_2023"
+    OUTPUT_DIR = os.path.join("/cluster/work/coss/stviel/output" , EXPERIMENT_NAME)
 else: 
     EXPERIMENT_NAME = "testing_different_subsets"
+    OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 
-OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
 

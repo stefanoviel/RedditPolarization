@@ -39,8 +39,11 @@ MODEL_BATCH_SIZE = 320_000
 
 # Dimensionality reduction 
 DIMENSIONALITY_REDUCTION_DB_NAME = "dimensional_reduction"
-# if set to None, the model doesn't get saved or loaded
-UMAP_MODEL_SAVE_PATH = None # os.path.join(OUTPUT_DIR, "umap_model.joblib")
+
+if 'cluster' in os.getcwd():
+    UMAP_MODEL_SAVE_PATH = os.path.join(OUTPUT_DIR, "umap_model.joblib")
+else:
+    UMAP_MODEL_SAVE_PATH = None  # if set to None, the model doesn't get saved or loaded
 UMAP_COMPONENTS = 5
 UMAP_N_Neighbors = 5 # increase this to get more global structure
 UMAP_MINDIST = 0

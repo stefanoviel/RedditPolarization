@@ -138,6 +138,10 @@ def transform_data_chunked(
                 dataset.resize((dataset.shape[0] + transformed_chunk.shape[0]), axis=0)
                 dataset[-transformed_chunk.shape[0]:] = transformed_chunk
 
+            del chunk
+            del transformed_chunk
+            gc.collect()
+
 
 def transform_data_full(
     umap_model: UMAP,

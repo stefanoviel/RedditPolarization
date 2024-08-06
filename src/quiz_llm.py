@@ -25,7 +25,8 @@ from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
-from src.utils.utils import connect_to_existing_database, load_json, load_h5py, load_model_and_tokenizer, create_tokenized_prompt, generate_response, append_to_json
+from src.utils.utils import connect_to_existing_database, load_json, load_h5py, load_model_and_tokenizer, append_to_json
+from src.utils.LLM_utils import create_tokenized_prompt, generate_response_local_model, generate_response
 
 
 def get_random_posts_with_clusters(con, ids, clusters, TABLE_NAME, n_quiz):
@@ -65,7 +66,12 @@ def generate_quiz(con, ids, clusters, topic_description, TABLE_NAME, N_QUIZ, n_o
             continue
 
         corect_topic_for_post = topic_description[str(cluster)]
-        all_topics = [topic_description[str(c)] for c in np.random.choice(list(topic_description.keys()), n_options-1, replace=False) if c != cluster]
+        
+        # check that there are enough topics to sample from 
+        if n_options > len(topic_description):
+            n_options = len(topic_description)
+
+        all_topics = [topic_description[str(c)] for c in np.random.choice(list(topic_description.keys()), n_options-1, replace=False) if int(c) != int(cluster)]
 
         correct_topic_position = np.random.randint(0, n_options)
         
@@ -91,14 +97,17 @@ def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME, TABLE_NAME, 
     con = connect_to_existing_database(DATABASE_PATH)
     questions = generate_quiz(con, ids, post_cluster_assignment, topic_description, TABLE_NAME, N_QUIZ, NUMBER_OF_OPTIONS)
 
-    model, tokenizer = load_model_and_tokenizer(LLM_NAME)
+    # not using local model for now
+    # model, tokenizer = load_model_and_tokenizer(LLM_NAME)
     correct_answers_count = 0
 
     for question in questions:
         prompt = question['question']
-        model_inputs = create_tokenized_prompt(prompt, tokenizer, model.device)
-        generated_ids = generate_response(model, model_inputs)
-        response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+        # model_inputs = create_tokenized_prompt(prompt, tokenizer, model.device)
+        # generated_ids = generate_response_local_model(model, model_inputs)
+        # response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
+
+        response = generate_response(prompt)
         try:
             response = json.loads(response)
         except Exception as e:
@@ -114,7 +123,7 @@ def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME, TABLE_NAME, 
     accuracy = correct_answers_count / len(questions)
     print(f"Number of correct answers: {correct_answers_count}/{len(questions)}, accuracy: {accuracy}")
 
-    return accuracy, correct_answers_count, len(questions)
+    return accuracy
 
 
 def run_quiz_multiple_times(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME, TABLE_NAME, TFIDF_FILE, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS, TEST_LLM_ACCURACY_FILE, N_QUIZ, NUM_RUNS):

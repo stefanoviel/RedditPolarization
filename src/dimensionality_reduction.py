@@ -48,7 +48,7 @@ def UMAP_transform_full_fit(
     transformed = local_model.fit_transform(features)
     save_h5py(transformed, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
-def UMAP_transform_partial_fit(
+def fit_umap_model(
     PROCESSED_REDDIT_DATA: str,
     UMAP_N_Neighbors: int,
     UMAP_COMPONENTS: int,
@@ -56,21 +56,19 @@ def UMAP_transform_partial_fit(
     PARTIAL_FIT_DIM_REDUCTION: float,
     NEGATIVE_SAMPLE_RATE: int,
     UMAP_N_EPOCHS: int,
-    DIMENSIONALITY_REDUCTION_DB_NAME: str,
     UMAP_MODEL_SAVE_PATH: str
-) -> None:
-    
+) -> UMAP:
     """
-    Load embeddings, sample a subset, fit UMAP on the subset, save the model, and transform the entire dataset.
+    Fit UMAP model on a subset of the data and save the model.
     If the model is already present in the designated location, load it instead of training a new one.
     """
-
-    if os.path.exists(UMAP_MODEL_SAVE_PATH):
+    if UMAP_MODEL_SAVE_PATH and os.path.exists(UMAP_MODEL_SAVE_PATH):
+        print(f"Loading existing UMAP model from {UMAP_MODEL_SAVE_PATH}")
         logger.info(f"Loading existing UMAP model from {UMAP_MODEL_SAVE_PATH}")
         umap_model = joblib.load(UMAP_MODEL_SAVE_PATH)
     else:
-        print("subset size for partial fit", PARTIAL_FIT_DIM_REDUCTION)
-        
+        print("Subset size for partial fit:", PARTIAL_FIT_DIM_REDUCTION)
+
         umap_model = UMAP(
             n_neighbors=UMAP_N_Neighbors,
             n_components=UMAP_COMPONENTS,
@@ -80,34 +78,117 @@ def UMAP_transform_partial_fit(
         )
 
         partial_fit_indices = get_indices_for_random_h5py_subset(PROCESSED_REDDIT_DATA, "embeddings", PARTIAL_FIT_DIM_REDUCTION)
-        logger.info(f"Running partial fit on {num_samples} samples out of {total_samples} samples")
-        s = time.time()
+        total_samples = len(partial_fit_indices)
+        logger.info(f"Running partial fit on {total_samples} samples")
 
-        # here we only load the necessary indices otherwise oom error
-        sampled_features = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", partial_fit_indices)  
+        s = time.time()
+        sampled_features = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", partial_fit_indices)
         logger.info(f"Time to load data: {time.time() - s:.2f} s")
+
         execute_with_gpu_logging(umap_model.fit, sampled_features)
 
-        # Save the fitted UMAP model
-        joblib.dump(umap_model, UMAP_MODEL_SAVE_PATH)
-        logger.info(f"UMAP model saved at {UMAP_MODEL_SAVE_PATH}")
+        if UMAP_MODEL_SAVE_PATH:
+            joblib.dump(umap_model, UMAP_MODEL_SAVE_PATH)
+            logger.info(f"UMAP model saved at {UMAP_MODEL_SAVE_PATH}")
 
-    # iterate over the rest of the data in chunks of subset_size and transform
-    # subset size (derived from PARTIAL_FIT_DIM_REDUCTION) should be the maximum subset of data on which we can fit
-    # given a certain GPU memory 
-    total_samples, num_samples = get_number_of_samples_h5py(PROCESSED_REDDIT_DATA, "embeddings", PARTIAL_FIT_DIM_REDUCTION)
-    result = None
-    num_samples = num_samples //4
-    for i in tqdm(range(0, total_samples, num_samples)): # transform takes more memory than fit
-        indices = np.arange(i, min(i + num_samples, total_samples))
-        chunk = load_with_indices_h5py_efficient(PROCESSED_REDDIT_DATA, "embeddings", indices)
-        transformed_chunk = execute_with_gpu_logging(umap_model.transform, chunk)
-        if result is None:
-            result = transformed_chunk
-        else:
-            result = np.concatenate((result, transformed_chunk), axis=0)
+    return umap_model
 
-    save_h5py(result, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
+
+def transform_data_chunked(
+    umap_model: UMAP,
+    PROCESSED_REDDIT_DATA: str,
+    DIMENSIONALITY_REDUCTION_DB_NAME: str,
+    EMBEDDING_DB_NAME: str,
+    PARTIAL_TRANSFORM_DIM_REDUCTION: float
+) -> None:
+    """
+    Transform data using UMAP model in chunks and save the transformed data.
+    """
+
+    # The transform can be done in chunks of different dimensions compared to fitting. In the experiments if fitting size is very small
+    # trasform would be very slow. That's why we have PARTIAL_TRANSFORM_DIM_REDUCTION
+    total_samples, num_samples = get_number_of_samples_h5py(PROCESSED_REDDIT_DATA, EMBEDDING_DB_NAME, PARTIAL_TRANSFORM_DIM_REDUCTION)
+    
+    with h5py.File(PROCESSED_REDDIT_DATA, 'a') as output_file:
+        
+        # Remove the existing dataset if it exists
+        if DIMENSIONALITY_REDUCTION_DB_NAME in output_file:
+            del output_file[DIMENSIONALITY_REDUCTION_DB_NAME]
+
+        for i in tqdm(range(0, total_samples, num_samples)):
+            indices = np.arange(i, min(i + num_samples, total_samples))
+            chunk = load_with_indices_h5py_efficient(PROCESSED_REDDIT_DATA, EMBEDDING_DB_NAME, indices)
+            transformed_chunk = execute_with_gpu_logging(umap_model.transform, chunk)
+            
+            if DIMENSIONALITY_REDUCTION_DB_NAME not in output_file:
+                maxshape = (None, transformed_chunk.shape[1])
+                chunks = (num_samples, transformed_chunk.shape[1])  # Define chunk size
+                dataset = output_file.create_dataset(
+                    DIMENSIONALITY_REDUCTION_DB_NAME, 
+                    data=transformed_chunk, 
+                    maxshape=maxshape, 
+                    chunks=chunks
+                )
+            else:
+                dataset = output_file[DIMENSIONALITY_REDUCTION_DB_NAME]
+                dataset.resize((dataset.shape[0] + transformed_chunk.shape[0]), axis=0)
+                dataset[-transformed_chunk.shape[0]:] = transformed_chunk
+
+
+def transform_data_full(
+    umap_model: UMAP,
+    PROCESSED_REDDIT_DATA: str,
+    DIMENSIONALITY_REDUCTION_DB_NAME: str
+) -> None:
+    """
+    Transform the entire dataset using UMAP model without chunking and save the transformed data.
+    """
+    total_samples, _ = get_number_of_samples_h5py(PROCESSED_REDDIT_DATA, "embeddings", 1.0)
+    indices = np.arange(total_samples)
+    full_data = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", indices)
+    transformed_data = execute_with_gpu_logging(umap_model.transform, full_data)
+    save_h5py(transformed_data, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
+
+def UMAP_partial_fit_partial_transform(
+    PROCESSED_REDDIT_DATA: str,
+    UMAP_N_Neighbors: int,
+    UMAP_COMPONENTS: int,
+    UMAP_MINDIST: float,
+    PARTIAL_FIT_DIM_REDUCTION: float,
+    NEGATIVE_SAMPLE_RATE: int,
+    UMAP_N_EPOCHS: int,
+    DIMENSIONALITY_REDUCTION_DB_NAME: str,
+    EMBEDDING_DB_NAME: str,
+    UMAP_MODEL_SAVE_PATH: str,
+    PARTIAL_TRANSFORM_DIM_REDUCTION: float
+) -> None:
+    """
+    Load embeddings, sample a subset, fit UMAP on the subset, save the model, and transform the entire dataset.
+    If the model is already present in the designated location, load it instead of training a new one.
+    """
+
+    # Fit the UMAP model or load it if already exists
+    umap_model = fit_umap_model(
+        PROCESSED_REDDIT_DATA,
+        UMAP_N_Neighbors,
+        UMAP_COMPONENTS,
+        UMAP_MINDIST,
+        PARTIAL_FIT_DIM_REDUCTION,
+        NEGATIVE_SAMPLE_RATE,
+        UMAP_N_EPOCHS,
+        UMAP_MODEL_SAVE_PATH
+    )
+
+    # Transform the data using the fitted UMAP model in chunks
+    transform_data_chunked(
+        umap_model,
+        PROCESSED_REDDIT_DATA,
+        DIMENSIONALITY_REDUCTION_DB_NAME,
+        EMBEDDING_DB_NAME,
+        PARTIAL_TRANSFORM_DIM_REDUCTION
+    )
+
+
 
 if __name__ == "__main__":
-    print("Total running time:", run_function_with_overrides(UMAP_transform_partial_fit, config))
+    print("Total running time:", run_function_with_overrides(UMAP_partial_fit_partial_transform, config))

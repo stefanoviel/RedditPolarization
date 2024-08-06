@@ -8,7 +8,7 @@ import config
 import time
 
 from src.embed_dataset import create_and_save_embeddings
-from src.dimensionality_reduction import UMAP_transform_partial_fit
+from src.dimensionality_reduction import UMAP_partial_fit_partial_transform
 from src.clustering import hdbscan_cluster_data
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import run_tf_idf
@@ -21,7 +21,7 @@ def main():
     logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__)
 
     # time_embeddings = run_function_with_overrides(create_and_save_embeddings, config)
-    time_umap = run_function_with_overrides(UMAP_transform_partial_fit, config)
+    time_umap = run_function_with_overrides(UMAP_partial_fit_partial_transform, config)
     # time_hdbscan = run_function_with_overrides(hdbscan_cluster_data, config)
     # time_tfidf = run_function_with_overrides(run_tf_idf, config)
 

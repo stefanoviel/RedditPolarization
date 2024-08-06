@@ -106,19 +106,6 @@ def DBCV(minimum_spanning_tree, labels, alpha=1.0):
         return score * (total - noise_size) / total
 
 
-def run_dbscan_full_data(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str):
-    data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
-    
-    scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=HDBS_MIN_CLUSTERSIZE, min_samples=HDBS_MIN_SAMPLES)
-    clusters = scanner.fit_predict(data)
-    logger.info(f"Number of clusters: {len(np.unique(clusters))}")
-
-    score = dbcv.dbcv(data, clusters)
-    print('SCORE', score)
-    
-    save_h5py(clusters, CLUSTER_FILE, 'data')
-
-
 def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str, PARTIAL_FIT_CLUSTER: float):
     # Load the full dataset
     data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
@@ -152,10 +139,14 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIM
     # Save the cluster results
     save_h5py(final_clusters, CLUSTER_FILE, 'data')
 
+def set_random_seed(seed: int):
+    np.random.seed(seed)
 
+def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int ):
+    """Search for the best min_cluster_size and min_samples for HDBSCAN using DBCV"""
 
-def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list):
-    """Seach for the best min_cluster_size and min_samples for HDBSCAN using DBCV"""
+    # Set the random seed for reproducibility
+    set_random_seed(SEED)
 
     data_size = len(data)
     logger.info(f"Data size: {data_size}")
@@ -168,12 +159,10 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: l
 
             # Check if min_cluster_size violates constraints
             if min_cluster_size < 2 or min_cluster_size > data_size or min_elements_core_points > data_size:
-                
-                print(f"min_cluster_size: {min_cluster_size}, min_samples: {min_elements_core_points}")
                 logger.info(f"Skipping combination: min_cluster_size={min_cluster_size}, min_samples={min_elements_core_points}")
                 continue  # Skip this iteration
 
-            scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_elements_core_points, gen_min_span_tree=True)
+            scanner = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_elements_core_points, gen_min_span_tree=True)
             clusters = scanner.fit_predict(data)
             
             dbcv = DBCV(scanner.minimum_spanning_tree_, clusters) 
@@ -198,16 +187,18 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: l
     return best_params, DBCV_scores
 
 
-def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME:str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list):
+def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
-    best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH, HDBS_MIN_SAMPLES_SEARCH)
+    best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH, HDBS_MIN_SAMPLES_SEARCH, SEED)
 
-    scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
+    # Set the random seed for reproducibility
+    set_random_seed(SEED)
+
+    scanner = HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
     clusters = scanner.fit_predict(data)
     save_h5py(clusters, PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
 
-    # return DBCV_scores
 
 def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, SUBCLUSTER_DB_NAME: str):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)

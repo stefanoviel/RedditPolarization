@@ -24,6 +24,7 @@ from dask.distributed import Client
 import dask.array as da
 import numexpr
 import time
+import gc
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 from src.utils.utils import load_h5py, load_with_indices_h5py_efficient, get_indices_for_random_h5py_subset, save_h5py, load_with_indices_h5py, get_number_of_samples_h5py
@@ -90,6 +91,9 @@ def fit_umap_model(
         if UMAP_MODEL_SAVE_PATH:
             joblib.dump(umap_model, UMAP_MODEL_SAVE_PATH)
             logger.info(f"UMAP model saved at {UMAP_MODEL_SAVE_PATH}")
+
+        del sampled_features
+        gc.collect()
 
     return umap_model
 

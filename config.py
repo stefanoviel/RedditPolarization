@@ -42,10 +42,10 @@ DIMENSIONALITY_REDUCTION_DB_NAME = "dimensional_reduction"
 # if set to None, the model doesn't get saved or loaded
 UMAP_MODEL_SAVE_PATH = None # os.path.join(OUTPUT_DIR, "umap_model.joblib")
 UMAP_COMPONENTS = 5
-UMAP_N_Neighbors = 4 # increase this to get more global structure
+UMAP_N_Neighbors = 5 # increase this to get more global structure
 UMAP_MINDIST = 0
 PARTIAL_FIT_DIM_REDUCTION = 0.1
-PARTIAL_TRANSFORM_DIM_REDUCTION = 0.2
+PARTIAL_TRANSFORM_DIM_REDUCTION = 0.1
 NEGATIVE_SAMPLE_RATE = 5 # understand better what it 
 LEARNING_RATE = 0.5
 UMAP_N_EPOCHS = 1000
@@ -55,8 +55,8 @@ CLUSTER_DB_NAME =  "clusters"
 SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 300
 HDBS_MIN_SAMPLES = 20
-HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH = [0.0005, 0.001, 0.005] # [0.0005, 0.001, 0.005, 0.01]
-HDBS_MIN_SAMPLES_SEARCH = [10] # [5, 10, 20]
+HDBS_MIN_CLUSTERSIZE_SEARCH = [30] # [0.0005, 0.001, 0.005, 0.01]
+HDBS_MIN_SAMPLES_SEARCH = [30] # [5, 10, 20]
 PARTIAL_FIT_CLUSTER = 0.1  # it might not be used, depending on the employed function
 
 # tfidf
@@ -77,7 +77,4 @@ RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]
 N_QUIZ = 100
 NUM_RUNS = 5
 NUMBER_OF_OPTIONS = 5
-N_POSTS = 1e7
-COHERENCE_FILE = os.path.join(OUTPUT_DIR, "coherence.json")
-TF_IDF_FOLDER= os.path.join(OUTPUT_DIR, "tf_idfs")
 TEST_LLM_ACCURACY_FILE = os.path.join(OUTPUT_DIR, "test_llm_accuracy.json")

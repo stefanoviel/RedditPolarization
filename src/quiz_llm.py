@@ -145,18 +145,5 @@ def run_quiz_multiple_times(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,
 
     return all_accuracies
 
-
-def solve_multiple_quiz_save_accuracy(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS, TF_IDF_FOLDER, TEST_LLM_ACCURACY_FILE): 
-    accuracies = []
-    for tf_idf_file in os.listdir(TF_IDF_FOLDER):
-        tf_idf_path = os.path.join(TF_IDF_FOLDER, tf_idf_file)
-        print(tf_idf_path)
-        accuracy = solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,TABLE_NAME, tf_idf_path, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS)
-        accuracies.append(accuracy)
-
-    with open(TEST_LLM_ACCURACY_FILE, 'w') as file:
-        json.dump(accuracies, file)
-
-
 if __name__ == "__main__": 
     run_function_with_overrides(run_quiz_multiple_times, config)

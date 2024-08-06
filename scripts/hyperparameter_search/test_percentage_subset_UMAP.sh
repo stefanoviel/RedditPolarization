@@ -13,12 +13,12 @@ echo "loaded stack"
 export OMP_NUM_THREADS=16
 ulimit -n 4096  # to allow duckdb to open all files
 
-# subset_sizes=(0.001 0.1 0.5 1.0)
-subset_sizes=(0.1 0.1)
+subset_sizes=(0.00001 0.0001 0.001 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
+
 
 # Loop through each subset size and run the dimensionality reduction script
 for size in "${subset_sizes[@]}"
 do
-    # echo "Running UMAP with subset size $size"
+    echo "Running UMAP with subset size $size"
     python scripts/start_from_dim_reduction.py --partial_fit_dim_reduction $size --tfidf_file tfids_$size.json
 done

@@ -62,9 +62,23 @@ def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
         row = tfidf_matrix.getrow(cluster_index)
         indices = row.indices
         data = row.data
-        top_indices = np.argpartition(data, -top_n)[-top_n:]
+        if len(data) == 0:
+            top_words_per_document[cluster_key] = []
+            continue
+        
+        # Ensure top_n does not exceed the length of data
+        actual_top_n = min(top_n, len(data))
+        
+        # Get the indices of the top `actual_top_n` elements
+        top_indices = np.argpartition(data, -actual_top_n)[-actual_top_n:]
+        
+        # Sort the top indices by their values in descending order
         top_indices_sorted = top_indices[np.argsort(data[top_indices])[::-1]]
+        
+        # Get the original indices corresponding to the top sorted indices
         original_indices = indices[top_indices_sorted]
+        
+        # Map indices to feature names
         top_features = [feature_names[ind] for ind in original_indices]
         top_words_per_document[cluster_key] = top_features
 

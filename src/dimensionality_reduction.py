@@ -138,14 +138,15 @@ def transform_data_chunked(
 def transform_data_full(
     umap_model: UMAP,
     PROCESSED_REDDIT_DATA: str,
+    EMBEDDING_DB_NAME: str,
     DIMENSIONALITY_REDUCTION_DB_NAME: str
 ) -> None:
     """
     Transform the entire dataset using UMAP model without chunking and save the transformed data.
     """
-    total_samples, _ = get_number_of_samples_h5py(PROCESSED_REDDIT_DATA, "embeddings", 1.0)
+    total_samples, _ = get_number_of_samples_h5py(PROCESSED_REDDIT_DATA, EMBEDDING_DB_NAME, 1.0)
     indices = np.arange(total_samples)
-    full_data = load_with_indices_h5py(PROCESSED_REDDIT_DATA, "embeddings", indices)
+    full_data = load_with_indices_h5py(PROCESSED_REDDIT_DATA, EMBEDDING_DB_NAME, indices)
     transformed_data = execute_with_gpu_logging(umap_model.transform, full_data)
     save_h5py(transformed_data, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
@@ -189,6 +190,43 @@ def UMAP_partial_fit_partial_transform(
     )
 
 
+def UMAP_partial_fit_full_transform(
+    PROCESSED_REDDIT_DATA: str,
+    UMAP_N_Neighbors: int,
+    UMAP_COMPONENTS: int,
+    UMAP_MINDIST: float,
+    PARTIAL_FIT_DIM_REDUCTION: float,
+    NEGATIVE_SAMPLE_RATE: int,
+    UMAP_N_EPOCHS: int,
+    DIMENSIONALITY_REDUCTION_DB_NAME: str,
+    EMBEDDING_DB_NAME: str,
+    UMAP_MODEL_SAVE_PATH: str,
+) -> None:
+    """
+    Load embeddings, sample a subset, fit UMAP on the subset, save the model, and transform the entire dataset.
+    If the model is already present in the designated location, load it instead of training a new one.
+    """
+
+    # Fit the UMAP model or load it if already exists
+    umap_model = fit_umap_model(
+        PROCESSED_REDDIT_DATA,
+        UMAP_N_Neighbors,
+        UMAP_COMPONENTS,
+        UMAP_MINDIST,
+        PARTIAL_FIT_DIM_REDUCTION,
+        NEGATIVE_SAMPLE_RATE,
+        UMAP_N_EPOCHS,
+        UMAP_MODEL_SAVE_PATH
+    )
+
+    # Transform the data using the fitted UMAP model in chunks
+    transform_data_full(
+        umap_model,
+        PROCESSED_REDDIT_DATA,
+        EMBEDDING_DB_NAME,
+        DIMENSIONALITY_REDUCTION_DB_NAME
+    )
+
 
 if __name__ == "__main__":
-    print("Total running time:", run_function_with_overrides(UMAP_partial_fit_partial_transform, config))
+    print("Total running time:", run_function_with_overrides(UMAP_partial_fit_full_transform, config))

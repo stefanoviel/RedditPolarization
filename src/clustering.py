@@ -142,7 +142,7 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIM
 def set_random_seed(seed: int):
     np.random.seed(seed)
 
-def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int ):
+def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int ):
     """Search for the best min_cluster_size and min_samples for HDBSCAN using DBCV"""
 
     # Set the random seed for reproducibility
@@ -153,7 +153,7 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: l
     best_params = {'min_cluster_size': None, 'min_samples': None, 'dbcv': -1, 'percentage_non_noise': -1}
     DBCV_scores = []
 
-    for min_cluster_size_percentage in HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH:
+    for min_cluster_size_percentage in HDBS_MIN_CLUSTERSIZE_SEARCH:
         for min_elements_core_points in HDBS_MIN_SAMPLES_SEARCH:
             min_cluster_size = int(data_size * min_cluster_size_percentage)
 
@@ -181,22 +181,28 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: l
                         f"percentage_non_noise: {percentage_non_noise}")
             DBCV_scores.append(dbcv)
 
-    logger.info(f"Best min_cluster_size: {best_params['min_cluster_size']}, "
-                f"Best min_samples: {best_params['min_samples']}, Best dbcv: {best_params['dbcv']}, percentage_non_noise: {best_params['percentage_non_noise']}")
+
 
     return best_params, DBCV_scores
 
 
-def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int):
+def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
 
-    best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_PERCENTAGE_SEARCH, HDBS_MIN_SAMPLES_SEARCH, SEED)
+    if len(HDBS_MIN_CLUSTERSIZE_SEARCH) == 1 or len(HDBS_MIN_SAMPLES_SEARCH) == 1:  # no search needs to be done
+        best_params = {'min_cluster_size': int(HDBS_MIN_CLUSTERSIZE_SEARCH[0]), 'min_samples': int(HDBS_MIN_SAMPLES_SEARCH[0])}
+    else:
+        best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_SEARCH, HDBS_MIN_SAMPLES_SEARCH, SEED)
 
     # Set the random seed for reproducibility
     set_random_seed(SEED)
 
     scanner = HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
     clusters = scanner.fit_predict(data)
+    percentage_non_noise = np.mean(clusters != -1)
+
+    logger.info(f"number of clusters: {len(np.unique(clusters))}, percentage of non-noise: {percentage_non_noise}")
+
     save_h5py(clusters, PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
 
 

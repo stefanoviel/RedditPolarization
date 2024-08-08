@@ -59,7 +59,7 @@ CLUSTER_DB_NAME =  "clusters"
 SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 30
 HDBS_MIN_SAMPLES = 30
-HDBS_MIN_CLUSTERSIZE_SEARCH = [100] # [0.0005, 0.001, 0.005, 0.01]
+HDBS_MIN_CLUSTERSIZE_SEARCH = [20] # [0.0005, 0.001, 0.005, 0.01]
 HDBS_MIN_SAMPLES_SEARCH = [20] # [5, 10, 20]
 PARTIAL_FIT_CLUSTER = 0.15  # it might not be used, depending on the employed function
 
@@ -71,7 +71,6 @@ SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
 
 # topic Naming
 LLM_NAME = "gpt"
-TOPIC_NAMING_FILE = os.path.join(OUTPUT_DIR, "topic_naming.json")
 
 # hierarchical topic discovery
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")

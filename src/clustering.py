@@ -18,7 +18,8 @@ import pandas as pd
 from src.utils.utils import load_h5py, save_h5py, get_indices_for_random_h5py_subset, load_with_indices_h5py
 from src.utils.function_runner import execute_with_gpu_logging
 from sklearn.metrics import silhouette_score
-from hdbscan import HDBSCAN
+# from hdbscan import HDBSCAN
+from cuml.cluster.hdbscan import HDBSCAN
 
 from cuml.common import logger
 logger.set_level(logger.level_error)
@@ -106,9 +107,9 @@ def DBCV(minimum_spanning_tree, labels, alpha=1.0):
         return score * (total - noise_size) / total
 
 
-def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIMENSIONALITY_REDUCTION_FILE: str, CLUSTER_FILE: str, PARTIAL_FIT_CLUSTER: float):
+def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME:str, CLUSTER_DB_NAME: str, PARTIAL_FIT_CLUSTER: float):
     # Load the full dataset
-    data = load_h5py(DIMENSIONALITY_REDUCTION_FILE, "data")
+    data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
     
     scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=HDBS_MIN_CLUSTERSIZE, min_samples=HDBS_MIN_SAMPLES, prediction_data=True)
 
@@ -122,7 +123,6 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIM
     
     # Prepare to collect batch results
     all_clusters = []
-    all_probs = []
     
     # Process approximate_predict in batches
     for i in range(0, len(data), batch_size):
@@ -134,10 +134,11 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, DIM
     final_clusters = np.concatenate(all_clusters)
     
     # Log the number of unique clusters
-    logger.info(f"Number of clusters: {len(np.unique(final_clusters))}")
+    print(np.unique(final_clusters))
+    logger.info(f"Number of clusters: {len(np.unique(final_clusters))}, shape: {final_clusters.shape}")
     
     # Save the cluster results
-    save_h5py(final_clusters, CLUSTER_FILE, 'data')
+    save_h5py(final_clusters, PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
 
 def set_random_seed(seed: int):
     np.random.seed(seed)
@@ -187,11 +188,8 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_M
 
 
 def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int):
-    # data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
-
-    # TODO: remove
-    indices = get_indices_for_random_h5py_subset(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, 0.01)
-    data = load_with_indices_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, indices)
+    data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
+    print("data shape", data.shape)
 
     if len(HDBS_MIN_CLUSTERSIZE_SEARCH) == 1 or len(HDBS_MIN_SAMPLES_SEARCH) == 1:  # no search needs to be done
         best_params = {'min_cluster_size': int(HDBS_MIN_CLUSTERSIZE_SEARCH[0]), 'min_samples': int(HDBS_MIN_SAMPLES_SEARCH[0])}

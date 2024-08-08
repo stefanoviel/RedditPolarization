@@ -42,13 +42,13 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids:dict, 
     """
     # Execute a query for each cluster and yield results
     for cluster, ids in cluster_to_ids.items():
-        if int(cluster) != -1:  
-            placeholders = ','.join(['?'] * len(ids))  # Prepare placeholders for SQL query
-            query = f"SELECT title, selftext FROM {TABLE_NAME} WHERE id IN ({placeholders})"
-            cursor = con.execute(query, ids)
-            posts = cursor.fetchall()
-            all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
-            yield all_posts_in_cluster
+        # if int(cluster) != -1:  
+        placeholders = ','.join(['?'] * len(ids))  # Prepare placeholders for SQL query
+        query = f"SELECT title, selftext FROM {TABLE_NAME} WHERE id IN ({placeholders})"
+        cursor = con.execute(query, ids)
+        posts = cursor.fetchall()
+        all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
+        yield all_posts_in_cluster
 
 
 
@@ -57,8 +57,8 @@ def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
     top_words_per_document = {}
     for cluster_index in tqdm(range(tfidf_matrix.shape[0])):
         cluster_key = str(unique_clusters[cluster_index])
-        if cluster_key == "-1":
-            continue
+        # if cluster_key == "-1":
+        #     continue
         row = tfidf_matrix.getrow(cluster_index)
         indices = row.indices
         data = row.data

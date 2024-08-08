@@ -22,7 +22,7 @@ def main():
 
     # time_embeddings = run_function_with_overrides(create_and_save_embeddings, config)
     # time_umap = run_function_with_overrides(UMAP_partial_fit_partial_transform, config)
-    time_hdbscan = run_function_with_overrides(run_dbscan_partial_fit, config)
+    time_hdbscan = run_function_with_overrides(hdbscan_cluster_data, config)
     time_tfidf = run_function_with_overrides(run_tf_idf, config)
 
 

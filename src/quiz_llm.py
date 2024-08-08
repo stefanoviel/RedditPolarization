@@ -26,7 +26,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 from src.utils.utils import connect_to_existing_database, load_json, load_h5py, load_model_and_tokenizer, append_to_json
-from src.utils.LLM_utils import create_tokenized_prompt, generate_response_local_model, generate_response
+from src.utils.LLM_utils import create_tokenized_prompt, generate_response_local_model, generate_response_lama_server
 
 
 def get_random_posts_with_clusters(con, ids, clusters, TABLE_NAME, n_quiz):
@@ -100,7 +100,7 @@ def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME, TABLE_NAME, 
         # generated_ids = generate_response_local_model(model, model_inputs)
         # response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
-        response = generate_response(prompt)
+        response = generate_response_lama_server(prompt)
         try:
             response = json.loads(response)
         except Exception as e:

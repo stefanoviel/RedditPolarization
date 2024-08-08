@@ -107,11 +107,10 @@ def DBCV(minimum_spanning_tree, labels, alpha=1.0):
         return score * (total - noise_size) / total
 
 
-def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME:str, CLUSTER_DB_NAME: str, PARTIAL_FIT_CLUSTER: float):
+def run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME:str, CLUSTER_DB_NAME: str, PARTIAL_FIT_CLUSTER: float):
     # Load the full dataset
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
     
-    scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=HDBS_MIN_CLUSTERSIZE, min_samples=HDBS_MIN_SAMPLES, prediction_data=True)
 
     logger.info(f"Fitting on size of data: {int(data.shape[0] * PARTIAL_FIT_CLUSTER):,}")
 
@@ -120,52 +119,43 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, PRO
     clusterer = execute_with_gpu_logging(scanner.fit, train_data)
 
     logger.info("HDBSCAN model fitted successfully")
-    
-    # Prepare to collect batch results
     all_clusters = []
-    
-    # Process approximate_predict in batches
+
+    # TODO: speed up this
     for i in tqdm(range(0, len(data), batch_size)):
-        print(f"Processing batch {i//batch_size + 1}/{len(data)//batch_size}", end="\r")
         batch_data = data[i:i+batch_size]
         clusters, probs = execute_with_gpu_logging(cuml.cluster.hdbscan.approximate_predict, clusterer, batch_data)
         all_clusters.append(clusters)
 
     final_clusters = np.concatenate(all_clusters)
-    
-    # Log the number of unique clusters
-    print(np.unique(final_clusters))
     logger.info(f"Number of clusters: {len(np.unique(final_clusters))}, shape: {final_clusters.shape}")
     
-    # Save the cluster results
-    save_h5py(final_clusters, PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
+    return final_clusters
 
-def set_random_seed(seed: int):
-    np.random.seed(seed)
 
-def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int ):
+def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, PARTIAL_FIT_CLUSTER:float, PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str):
     """Search for the best min_cluster_size and min_samples for HDBSCAN using DBCV"""
 
-    # Set the random seed for reproducibility
-    set_random_seed(SEED)
 
     data_size = len(data)
     logger.info(f"Data size: {data_size}")
     best_params = {'min_cluster_size': None, 'min_samples': None, 'dbcv': -1, 'percentage_non_noise': -1}
     DBCV_scores = []
 
-    for min_cluster_size_percentage in HDBS_MIN_CLUSTERSIZE_SEARCH:
+    for min_cluster_size in HDBS_MIN_CLUSTERSIZE_SEARCH:
         for min_elements_core_points in HDBS_MIN_SAMPLES_SEARCH:
-            min_cluster_size = int(data_size * min_cluster_size_percentage)
 
             # Check if min_cluster_size violates constraints
             if min_cluster_size < 2 or min_cluster_size > data_size or min_elements_core_points > data_size:
                 logger.info(f"Skipping combination: min_cluster_size={min_cluster_size}, min_samples={min_elements_core_points}")
                 continue  # Skip this iteration
 
-            scanner = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_elements_core_points, gen_min_span_tree=True)
-            clusters = scanner.fit_predict(data)
-            
+            scanner = HDBSCAN(min_cluster_size=min_cluster_size, min_samples=min_elements_core_points, gen_min_span_tree=True, prediction_data=True)
+            if PARTIAL_FIT_CLUSTER == 1.0:
+                clusters = scanner.fit_predict(data)
+            else:
+                clusters = run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME, PARTIAL_FIT_CLUSTER)
+
             dbcv = DBCV(scanner.minimum_spanning_tree_, clusters) 
             percentage_non_noise = np.mean(clusters != -1)
 
@@ -187,21 +177,22 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_M
     return best_params, DBCV_scores
 
 
-def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int):
+def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, PARTIAL_FIT_CLUSTER: float):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
     print("data shape", data.shape)
 
-    if len(HDBS_MIN_CLUSTERSIZE_SEARCH) == 1 or len(HDBS_MIN_SAMPLES_SEARCH) == 1:  # no search needs to be done
+    if len(HDBS_MIN_CLUSTERSIZE_SEARCH) == 1 and len(HDBS_MIN_SAMPLES_SEARCH) == 1:  # no search needs to be done
         best_params = {'min_cluster_size': int(HDBS_MIN_CLUSTERSIZE_SEARCH[0]), 'min_samples': int(HDBS_MIN_SAMPLES_SEARCH[0])}
     else:
-        best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_SEARCH, HDBS_MIN_SAMPLES_SEARCH, SEED)
+        best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_SEARCH, HDBS_MIN_SAMPLES_SEARCH, PARTIAL_FIT_CLUSTER, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME)
 
-    # Set the random seed for reproducibility
-    set_random_seed(SEED)
+    
+    scanner = HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'], prediction_data=True)
+    if PARTIAL_FIT_CLUSTER == 1.0:
+        clusters = scanner.fit_predict(data)
+    else:
+        clusters = run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME, PARTIAL_FIT_CLUSTER)
 
-    scanner = HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
-    print('Fitting HDBSCAN')
-    clusters = scanner.fit_predict(data)
     percentage_non_noise = np.mean(clusters != -1)
 
     logger.info(f"number of clusters: {len(np.unique(clusters))}, percentage of non-noise: {percentage_non_noise}")

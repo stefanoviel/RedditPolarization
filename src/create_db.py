@@ -40,6 +40,7 @@ def create_db(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME
     
     # Add the post_cluster_assignment as a new column
     df['cluster'] = post_cluster_assignment
+    df['topic_description'] = [topic_description[str(cluster)] for cluster in post_cluster_assignment]
 
     df.to_csv(FINAL_DATAFRAME, index=False)
 

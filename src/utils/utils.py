@@ -218,8 +218,6 @@ def create_filtered_database(parquet_directory: str, table_name: str, columns: l
     return con
 
 
-
-
 def connect_to_existing_database(database_path: str) -> duckdb.DuckDBPyConnection:
     """
     Connect to an existing DuckDB database given the path where it is saved.
@@ -240,9 +238,6 @@ def load_model_and_tokenizer(model_name):
     tokenizer = AutoTokenizer.from_pretrained(model_name)
     return model, tokenizer
 
-def format_prompt(prompt, list_of_words):
-    """Format the prompt text with specified words."""
-    return prompt.format(list_of_words=list_of_words)
 
 
 def save_json_file(data, file_path):

@@ -122,7 +122,7 @@ def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLU
     # save_h5py(adjacency_matrix, ADJACENCY_MATRIX, "data")   
 
     unique_cluster_order = list(cluster_to_ids.keys())
-    unique_cluster_order.remove(-1)  # Remove the noise cluster
+    # unique_cluster_order.remove(-1)  # Remove the noise cluster
     top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_cluster_order, TFIDF_WORDS_PER_CLUSTER)
     save_json(top_words_per_document, TFIDF_FILE)
 

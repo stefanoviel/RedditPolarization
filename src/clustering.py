@@ -125,7 +125,7 @@ def run_dbscan_partial_fit(HDBS_MIN_CLUSTERSIZE: int, HDBS_MIN_SAMPLES: int, PRO
     all_clusters = []
     
     # Process approximate_predict in batches
-    for i in range(0, len(data), batch_size):
+    for i in tqdm(range(0, len(data), batch_size)):
         print(f"Processing batch {i//batch_size + 1}/{len(data)//batch_size}", end="\r")
         batch_data = data[i:i+batch_size]
         clusters, probs = execute_with_gpu_logging(cuml.cluster.hdbscan.approximate_predict, clusterer, batch_data)

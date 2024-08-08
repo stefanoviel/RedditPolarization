@@ -30,19 +30,12 @@ from src.utils.LLM_utils import create_tokenized_prompt, generate_response_local
 
 
 def get_random_posts_with_clusters(con, ids, clusters, TABLE_NAME, n_quiz):
-    # Filter out IDs corresponding to clusters with labels -1
+
+    # Filter out IDs corresponding to clusters with labels -1, we don't want to have noise as an option in the quiz 
     filtered_ids_clusters = [(id, cluster) for id, cluster in zip(ids, clusters) if cluster != -1]
-
-    # Separate the filtered IDs and clusters
     filtered_ids, filtered_clusters = zip(*filtered_ids_clusters) if filtered_ids_clusters else ([], [])
-
-    # Map filtered IDs to their clusters
     id_to_cluster = {id.decode('utf-8'): cluster for id, cluster in zip(filtered_ids, filtered_clusters)}
-    
-    # Decode byte string IDs to regular strings
     decoded_ids = [id.decode('utf-8') for id in filtered_ids]
-    
-    # Prepare placeholders for SQL query
     placeholders = ','.join(['?'] * len(decoded_ids))
     
     # Execute a single query to select n random posts from all clusters

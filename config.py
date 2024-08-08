@@ -57,10 +57,10 @@ UMAP_N_EPOCHS = 1000
 # clustering 
 CLUSTER_DB_NAME =  "clusters"
 SUBCLUSTER_DB_NAME = "subclusters"
-HDBS_MIN_CLUSTERSIZE= 300
-HDBS_MIN_SAMPLES = 20
-HDBS_MIN_CLUSTERSIZE_SEARCH = [30] # [0.0005, 0.001, 0.005, 0.01]
-HDBS_MIN_SAMPLES_SEARCH = [30] # [5, 10, 20]
+HDBS_MIN_CLUSTERSIZE= 30
+HDBS_MIN_SAMPLES = 30
+HDBS_MIN_CLUSTERSIZE_SEARCH = [10] # [0.0005, 0.001, 0.005, 0.01]
+HDBS_MIN_SAMPLES_SEARCH = [10] # [5, 10, 20]
 PARTIAL_FIT_CLUSTER = 0.1  # it might not be used, depending on the employed function
 
 # tfidf
@@ -82,3 +82,6 @@ N_QUIZ = 100
 NUM_RUNS = 5
 NUMBER_OF_OPTIONS = 5
 TEST_LLM_ACCURACY_FILE = os.path.join(OUTPUT_DIR, "test_llm_accuracy.json")
+
+# final pandas dataframe
+FINAL_DATAFRAME = os.path.join(OUTPUT_DIR, "final_dataframe.csv")

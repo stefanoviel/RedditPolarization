@@ -21,15 +21,15 @@ def main():
     logger = configure_get_logger(config.OUTPUT_DIR, config.EXPERIMENT_NAME, executed_file_name = __file__)
 
     # time_embeddings = run_function_with_overrides(create_and_save_embeddings, config)
-    time_umap = run_function_with_overrides(UMAP_partial_fit_partial_transform, config)
-    # time_hdbscan = run_function_with_overrides(hdbscan_cluster_data, config)
+    # time_umap = run_function_with_overrides(UMAP_partial_fit_partial_transform, config)
+    time_hdbscan = run_function_with_overrides(hdbscan_cluster_data, config)
     # time_tfidf = run_function_with_overrides(run_tf_idf, config)
 
 
     logger.info("-------------------------------")
     # logger.info(f"Time for embeddings: {time_embeddings/60:,} min")
-    logger.info(f"Time for UMAP: {time_umap} s")
-    # logger.info(f"Time for HDBSCAN: {time_hdbscan} s")
+    # logger.info(f"Time for UMAP: {time_umap} s")
+    logger.info(f"Time for HDBSCAN: {time_hdbscan} s")
     # logger.info(f"Time for TF-IDF: {time_tfidf:,} s")
 
 

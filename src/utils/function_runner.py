@@ -89,7 +89,6 @@ def run_function_with_overrides(func: callable, config: object):
     default_params = {param: getattr(config, param) for param in parameters}
     cmd_args = parse_cmd_args(parameters)
     final_params = override_params_with_cmd_args(default_params, cmd_args)
-    print(final_params)
     # log values of parameters
     logger.info(f"Running {func.__name__} with parameters:")
     for key, value in final_params.items():

@@ -15,7 +15,7 @@ import time
 import seaborn as sns
 import pandas as pd
 
-from src.utils.utils import load_h5py, save_h5py
+from src.utils.utils import load_h5py, save_h5py, get_indices_for_random_h5py_subset, load_with_indices_h5py
 from src.utils.function_runner import execute_with_gpu_logging
 from sklearn.metrics import silhouette_score
 from hdbscan import HDBSCAN
@@ -187,7 +187,11 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_M
 
 
 def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, SEED: int):
-    data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
+    # data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
+
+    # TODO: remove
+    indices = get_indices_for_random_h5py_subset(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, 0.01)
+    data = load_with_indices_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, indices)
 
     if len(HDBS_MIN_CLUSTERSIZE_SEARCH) == 1 or len(HDBS_MIN_SAMPLES_SEARCH) == 1:  # no search needs to be done
         best_params = {'min_cluster_size': int(HDBS_MIN_CLUSTERSIZE_SEARCH[0]), 'min_samples': int(HDBS_MIN_SAMPLES_SEARCH[0])}
@@ -198,6 +202,7 @@ def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB
     set_random_seed(SEED)
 
     scanner = HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
+    print('Fitting HDBSCAN')
     clusters = scanner.fit_predict(data)
     percentage_non_noise = np.mean(clusters != -1)
 

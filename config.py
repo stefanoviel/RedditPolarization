@@ -7,7 +7,7 @@ if 'cluster' in os.getcwd():
     EXPERIMENT_NAME = "2008_2023"
     OUTPUT_DIR = os.path.join("/cluster/work/coss/stviel/output" , EXPERIMENT_NAME)
 else: 
-    EXPERIMENT_NAME = "testing_different_subsets"
+    EXPERIMENT_NAME = "2008_2023"
     OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 
 if not os.path.exists(OUTPUT_DIR):
@@ -64,11 +64,11 @@ HDBS_MIN_SAMPLES_SEARCH = [20] # [5, 10, 20]
 PARTIAL_FIT_CLUSTER = 0.15  # it might not be used, depending on the employed function
 
 # tfidf
-TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
+TFIDF_MAX_FEATURES = 100  # Size of the vocabulary, None means no limitation
 TFIDF_WORDS_PER_CLUSTER = 15
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
-N_POST_PER_CLUSTER = 50_000
+N_POST_PER_CLUSTER =50
 
 # topic Naming
 LLM_NAME = "gpt"

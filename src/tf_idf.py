@@ -46,16 +46,21 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict,
         placeholders = ','.join(['?'] * len(ids))  # Prepare placeholders for SQL query
 
         s = time.time()
-        query = f"SELECT title, selftext FROM {TABLE_NAME} WHERE id IN ({placeholders})"
+        
+        # not good practice, sorry
+        query = f"""
+        SELECT title, selftext 
+        FROM {TABLE_NAME} 
+        WHERE id IN ({placeholders}) 
+        LIMIT {N_POST_PER_CLUSTER}
+        """
         cursor = con.execute(query, ids)
         posts = cursor.fetchall()
 
-        # Limit the number of posts to N_POST_PER_CLUSTER
-        limited_posts = posts[:N_POST_PER_CLUSTER]
-
-        all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in limited_posts])
+        all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
         yield all_posts_in_cluster
-        print(f"Cluster {cluster} has {len(limited_posts)} posts (out of {len(posts)}) and took {time.time() - s} seconds to process.")
+        print(f"Cluster {cluster} has {len(posts)} posts (limited to {N_POST_PER_CLUSTER}) and took {time.time() - s} seconds to process.")
+
 
 
 
@@ -106,11 +111,12 @@ def compute_adjacency_matrix(tfidf_matrix, all_clusters):
     return adjacency_matrix
 
 
-
 def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
     my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["https", "com", "www", "ve", "http", "amp"]))
+    print('stop words')
     tfidf_vectorizer = TfidfVectorizer(stop_words=my_stop_words, lowercase=True,  max_features=TFIDF_MAX_FEATURES)
-    tfidf_matrix = execute_with_gpu_logging(tfidf_vectorizer.fit_transform, documents)
+    tfidf_matrix = tfidf_vectorizer.fit_transform(documents)
+    print('done with fit transform')
     feature_names = tfidf_vectorizer.get_feature_names_out()  # Get all feature names from the vectorizer
 
     return tfidf_matrix, feature_names
@@ -122,6 +128,7 @@ def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLU
     post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
     con =  connect_to_existing_database(DATABASE_PATH)
     cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
+    print('cluster to id')
     iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME, N_POST_PER_CLUSTER)
     tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
 

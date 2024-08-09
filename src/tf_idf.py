@@ -43,25 +43,25 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict,
     """
     # Execute a query for each cluster and yield results
     for cluster, ids in cluster_to_ids.items():
-        placeholders = ','.join(['?'] * len(ids))  # Prepare placeholders for SQL query
+        # take a N_POST_PER_CLUSTER random sample from each cluster
+        ids = np.random.choice(ids, N_POST_PER_CLUSTER, replace=False)
+        decode_ids = [id.decode('utf-8') for id in ids]
 
-        s = time.time()
+        placeholders = ','.join(['?'] * len(decode_ids))  # Prepare placeholders for SQL query
         
+        s = time.time()
         # not good practice, sorry
         query = f"""
         SELECT title, selftext 
         FROM {TABLE_NAME} 
         WHERE id IN ({placeholders}) 
-        LIMIT {N_POST_PER_CLUSTER}
         """
-        cursor = con.execute(query, ids)
+        cursor = con.execute(query, decode_ids)
         posts = cursor.fetchall()
 
         all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
         yield all_posts_in_cluster
         print(f"Cluster {cluster} has {len(posts)} posts (limited to {N_POST_PER_CLUSTER}) and took {time.time() - s} seconds to process.")
-
-
 
 
 
@@ -130,16 +130,14 @@ def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLU
     cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
     print('cluster to id')
     iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME, N_POST_PER_CLUSTER)
-    tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
+    # tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
 
-    # only needed for hierarchical clustering
-    # adjacency_matrix = compute_adjacency_matrix(tfidf_matrix, unique_clusters)
-    # save_h5py(adjacency_matrix, ADJACENCY_MATRIX, "data")   
+    for n, post in enumerate(iterator_posts_in_cluster): 
+        print(n)
 
-    unique_cluster_order = list(cluster_to_ids.keys())
-    # unique_cluster_order.remove(-1)  # Remove the noise cluster
-    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_cluster_order, TFIDF_WORDS_PER_CLUSTER)
-    save_json(top_words_per_document, TFIDF_FILE)
+    # unique_cluster_order = list(cluster_to_ids.keys())
+    # top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_cluster_order, TFIDF_WORDS_PER_CLUSTER)
+    # save_json(top_words_per_document, TFIDF_FILE)
 
 
 if __name__ == "__main__":
@@ -147,6 +145,7 @@ if __name__ == "__main__":
     # config.CLUSTER_FILE = config.SUBCLUSTER_FILE
     # config.TFIDF_FILE = config.SUBCLUSTER_TFIDF_FILE
     print("Total running time:", run_function_with_overrides(run_tf_idf, config))
+
 
 
 

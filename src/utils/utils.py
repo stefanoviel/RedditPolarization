@@ -224,7 +224,7 @@ def connect_to_existing_database(database_path: str) -> duckdb.DuckDBPyConnectio
     """
     try:
         # Connect to the existing database
-        con = duckdb.connect(database=database_path, read_only=False)
+        con = duckdb.connect(database=database_path, read_only=True)
         print(f"Successfully connected to the database at {database_path}")
         return con
     except Exception as e:

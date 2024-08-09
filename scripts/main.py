@@ -12,7 +12,7 @@ from src.dimensionality_reduction import UMAP_partial_fit_partial_transform
 from src.clustering import hdbscan_cluster_data, run_dbscan_partial_fit
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import run_tf_idf
-
+from src.create_db import create_db
 
 def main():
     if not os.path.exists(config.OUTPUT_DIR):
@@ -23,14 +23,16 @@ def main():
     # time_embeddings = run_function_with_overrides(create_and_save_embeddings, config)
     # time_umap = run_function_with_overrides(UMAP_partial_fit_partial_transform, config)
     time_hdbscan = run_function_with_overrides(hdbscan_cluster_data, config)
-    # time_tfidf = run_function_with_overrides(run_tf_idf, config)
+    time_tfidf = run_function_with_overrides(run_tf_idf, config)
+    time_create_db = run_function_with_overrides(create_db, config)
 
 
     logger.info("-------------------------------")
     # logger.info(f"Time for embeddings: {time_embeddings/60:,} min")
     # logger.info(f"Time for UMAP: {time_umap} s")
     logger.info(f"Time for HDBSCAN: {time_hdbscan} s")
-    # logger.info(f"Time for TF-IDF: {time_tfidf:,} s")
+    logger.info(f"Time for TF-IDF: {time_tfidf:,} s")
+    logger.info(f"Time for creating the database: {time_create_db:,} s")
 
 
 if __name__ == "__main__":

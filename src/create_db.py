@@ -26,21 +26,23 @@ def create_db(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME
 
     decoded_ids = [id.decode('utf-8') for id in ids]
 
-    query = f"SELECT id, subreddit, created_utc, author FROM {TABLE_NAME} WHERE id IN ({','.join(['?']*len(ids))})"
+    query = f"SELECT id, subreddit, created_utc, author, title FROM {TABLE_NAME} WHERE id IN ({','.join(['?']*len(ids))})"
     cursor = con.execute(query, decoded_ids)
     
     # Fetch all rows from the executed query
     rows = cursor.fetchall()
     
     # Define the column names based on the SELECT statement
-    columns = ['id', 'subreddit', 'created_utc', 'author']
+    columns = ['id', 'subreddit', 'created_utc', 'author', 'title']
     
     # Create a pandas DataFrame from the fetched rows
     df = pd.DataFrame(rows, columns=columns)
     
     # Add the post_cluster_assignment as a new column
-    df['cluster'] = post_cluster_assignment
-    df['topic_description'] = [topic_description[str(cluster)] for cluster in post_cluster_assignment]
+
+    cluster_topic_df = pd.DataFrame([[cluster, topic_description[str(cluster)]] for cluster in post_cluster_assignment], columns=['cluster', 'topic_description'])
+    cluster_topic_df['id'] = decoded_ids
+    df = df.merge(cluster_topic_df, on='id')
 
     df.to_csv(FINAL_DATAFRAME, index=False)
 

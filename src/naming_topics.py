@@ -28,7 +28,8 @@ def process_topics(tfidf_data, prompt, LLM_NAME):
             response = json.loads(response)
         except:
             print(f"Error in cluster {cluster}")
-            print(f"Error response {response}")
+            print(f"Error response {response}")  # to see what the response lookied like and tune the prompt
+            
             response = {"topic": "Error"}
         if "topic" not in response:
             continue
@@ -40,32 +41,38 @@ def main(TFIDF_FILE, FINAL_DATAFRAME, LLM_NAME):
 
     # TODO: fix prompt, sometime it outputs '''json '''
 
-    PROMPT = """ Given the following lists of words, each associated with a cluster number, identify a succinct topic that captures the essence of the words in each list. Below are some examples of how the output should be structured in JSON format.
+    PROMPT = """Given the following lists of words, each associated with a cluster number, identify a succinct topic that captures the essence of the words in each list. Below are examples of the expected JSON output format.
 
     Examples:
-    - "game, team, season, like, time, year, player, play, games, 10" -> {{"topic" : "Sports Analysis"}}
-    - "new, like, time, know, game, people, think, make, good, really" -> {{"topic" : "General Discussion"}}
-    - "team, vs, game, twitch, tv, twitter, youtube, 00, logo, mt" -> {{"topic" : "Live Streaming and Social Media"}}
-    - "art, oc, painting, like, drawing, new, paint, pen, imgur, time" -> {{"topic" : "Art and Drawing"}}
+    - "game, team, season, like, time, year, player, play, games, 10" -> {{"topic": "Sports Analysis"}}
+    - "new, like, time, know, game, people, think, make, good, really" -> {{"topic": "General Discussion"}}
+    - "team, vs, game, twitch, tv, twitter, youtube, 00, logo, mt" -> {{"topic": "Live Streaming and Social Media"}}
+    - "art, oc, painting, like, drawing, new, paint, pen, imgur, time" -> {{"topic": "Art and Drawing"}}
 
-    Your task is to find an appropriate topic for the list of words reported below. Present your output in the following JSON format:
+    Your task:
 
-    {{
-    "topic": "Your identified topic here"
-    }}
+    Given a list of words, output only the identified topic in the following JSON format, ensuring there are no additional characters or formatting around the JSON:
 
-    Please perform the same task for the following lists of words:
-    - {list_of_words} ->
+    {{"topic": "Your identified topic here"}}
 
-    ONLY output the topic name in the JSON format above. Do not include any other information in the JSON output.
+    Please perform the same task for the following list of words:
+    - {list_of_words}
+
+    Output Format:
+    {{"topic": "Identified topic"}}
+
+    Ensure that the output is in valid JSON format and is not surrounded by any extra formatting like '''json '''.
     """
 
     tfidf_data = load_json(TFIDF_FILE)
     topic_naming = process_topics(tfidf_data, PROMPT, LLM_NAME)
     df = pd.DataFrame(topic_naming, columns=["cluster", "topic"])
     final_df = pd.read_csv(FINAL_DATAFRAME)
-    final_df = final_df.merge(df, on="cluster", how="left")
+
+    final_df = final_df.merge(df, on="cluster", how='left')
+    print(final_df.head())
     final_df.to_csv(FINAL_DATAFRAME, index=False)
+
 
 
 

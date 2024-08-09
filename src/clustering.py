@@ -107,7 +107,7 @@ def DBCV(minimum_spanning_tree, labels, alpha=1.0):
         return score * (total - noise_size) / total
 
 
-def run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME:str, CLUSTER_DB_NAME: str, PARTIAL_FIT_CLUSTER: float):
+def run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME:str, PARTIAL_FIT_CLUSTER: float):
     # Load the full dataset
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
     
@@ -118,9 +118,14 @@ def run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_R
     train_data = data[np.random.choice(data.shape[0], batch_size, replace=False)]
     clusterer = execute_with_gpu_logging(scanner.fit, train_data)
 
-    logger.info("HDBSCAN model fitted successfully")
-    all_clusters = []
+    labels = clusterer.labels_
 
+    # Determine the number of clusters (excluding noise, which is labeled as -1)
+    num_clusters = len(set(labels)) - (1 if -1 in labels else 0)
+    
+    logger.info(f"Number of clusters found: {num_clusters}")
+
+    all_clusters = []
     # TODO: speed up this
     for i in tqdm(range(0, len(data), batch_size)):
         batch_data = data[i:i+batch_size]
@@ -154,7 +159,7 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_M
             if PARTIAL_FIT_CLUSTER == 1.0:
                 clusters = scanner.fit_predict(data)
             else:
-                clusters = run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME, PARTIAL_FIT_CLUSTER)
+                clusters = run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, PARTIAL_FIT_CLUSTER)
 
             dbcv = DBCV(scanner.minimum_spanning_tree_, clusters) 
             percentage_non_noise = np.mean(clusters != -1)
@@ -191,7 +196,7 @@ def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB
     if PARTIAL_FIT_CLUSTER == 1.0:
         clusters = scanner.fit_predict(data)
     else:
-        clusters = run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME, PARTIAL_FIT_CLUSTER)
+        clusters = run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, PARTIAL_FIT_CLUSTER)
 
     percentage_non_noise = np.mean(clusters != -1)
 

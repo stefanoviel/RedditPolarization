@@ -13,6 +13,7 @@ from sklearn.feature_extraction import text
 import numpy as np
 import cuml
 import pandas as pd
+import time
 from tqdm import tqdm
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 from src.utils.utils import connect_to_existing_database, load_json, save_h5py, load_h5py, save_json
@@ -36,19 +37,26 @@ def map_ids_to_clusters(ids, cluster_assignment):
         cluster_to_ids[cluster].append(id)
     return cluster_to_ids
 
-def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids:dict, TABLE_NAME:str):
+def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict, TABLE_NAME: str, N_POST_PER_CLUSTER: int):
     """
-    Yield the title and selftext for all the posts in each cluster by executing a database query for each cluster.
+    Yield the title and selftext for a limited number of posts in each cluster by executing a database query for each cluster.
     """
     # Execute a query for each cluster and yield results
     for cluster, ids in cluster_to_ids.items():
-        # if int(cluster) != -1:  
         placeholders = ','.join(['?'] * len(ids))  # Prepare placeholders for SQL query
+
+        s = time.time()
         query = f"SELECT title, selftext FROM {TABLE_NAME} WHERE id IN ({placeholders})"
         cursor = con.execute(query, ids)
         posts = cursor.fetchall()
-        all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in posts])
+
+        # Limit the number of posts to N_POST_PER_CLUSTER
+        limited_posts = posts[:N_POST_PER_CLUSTER]
+
+        all_posts_in_cluster = " ".join([title + " " + selftext for title, selftext in limited_posts])
         yield all_posts_in_cluster
+        print(f"Cluster {cluster} has {len(limited_posts)} posts (out of {len(posts)}) and took {time.time() - s} seconds to process.")
+
 
 
 
@@ -107,14 +115,14 @@ def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
 
     return tfidf_matrix, feature_names
 
-def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int):
+def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLUSTER_DB_NAME:str, IDS_DB_NAME:str, TFIDF_MAX_FEATURES:str, TFIDF_FILE:str, ADJACENCY_MATRIX:str, TFIDF_WORDS_PER_CLUSTER:int, N_POST_PER_CLUSTER:int):
     """Main function to compute the TF-IDF matrix and adjacency matrix."""
 
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
     post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
     con =  connect_to_existing_database(DATABASE_PATH)
     cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
-    iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME)
+    iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME, N_POST_PER_CLUSTER)
     tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
 
     # only needed for hierarchical clustering

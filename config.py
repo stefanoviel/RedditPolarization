@@ -68,6 +68,7 @@ TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
 TFIDF_WORDS_PER_CLUSTER = 15
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
+N_POST_PER_CLUSTER = 50_000
 
 # topic Naming
 LLM_NAME = "gpt"

@@ -22,7 +22,6 @@ if 'cluster' in os.getcwd():
     REDDIT_DATA_DIR = '/cluster/work/coss/anmusso/reddit_parquet/submissions/'
 else:
     REDDIT_DATA_DIR = 'data/random_sample'
-# REDDIT_DATA_DIR = 'data/parquet'
 DATABASE_PATH = os.path.join(OUTPUT_DIR, "filtered_reddit_data.db")
 PROCESSED_REDDIT_DATA = os.path.join(OUTPUT_DIR, "reddit_data.h5")
 
@@ -58,6 +57,7 @@ UMAP_N_EPOCHS = 1000
 
 # clustering 
 CLUSTER_DB_NAME =  "clusters"
+CENTROIDS_DB_NAME = "centroids"
 SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 30
 HDBS_MIN_SAMPLES = 30

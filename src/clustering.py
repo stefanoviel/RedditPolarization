@@ -126,7 +126,6 @@ def run_dbscan_partial_fit(scanner, PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_R
     logger.info(f"Number of clusters found: {num_clusters}")
 
     all_clusters = []
-    # TODO: speed up this
     for i in tqdm(range(0, len(data), batch_size)):
         batch_data = data[i:i+batch_size]
         clusters, probs = execute_with_gpu_logging(cuml.cluster.hdbscan.approximate_predict, clusterer, batch_data)
@@ -181,6 +180,24 @@ def search_best_dbcv(data: np.ndarray, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_M
 
     return best_params, DBCV_scores
 
+def save_cluster_centroids(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, CENTROIDS_DB_NAME: str):
+    data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
+    clusters = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
+
+    max_cluster_id = np.max(clusters)  # Get the maximum cluster ID
+    centroids = np.zeros((max_cluster_id + 1, data.shape[1]))  # Create a centroids array with size based on max cluster ID
+
+    for cluster in range(max_cluster_id + 1):
+        if cluster == -1:  # Skip noise
+            continue
+
+        cluster_data = data[clusters == cluster]
+        if cluster_data.size > 0:  # Check if the cluster has any data points
+            centroids[cluster] = np.mean(cluster_data, axis=0)
+
+    save_h5py(centroids, PROCESSED_REDDIT_DATA, CENTROIDS_DB_NAME)
+
+
 
 def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, PARTIAL_FIT_CLUSTER: float):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
@@ -234,7 +251,7 @@ def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY
 
 if __name__ == "__main__":
 
-    run_function_with_overrides(hdbscan_cluster_data, config)
+    run_function_with_overrides(save_cluster_centroids, config)
     # run_function_with_overrides(apply_clustering_existing_clusters, config)
 
     

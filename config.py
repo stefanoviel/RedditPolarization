@@ -81,7 +81,7 @@ RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]
 
 # quiz & coherence
 N_QUIZ = 100
-NUM_RUNS = 5
+NUM_RUNS = 1
 NUMBER_OF_OPTIONS = 5
 TEST_LLM_ACCURACY_FILE = os.path.join(OUTPUT_DIR, "test_llm_accuracy.json")
 

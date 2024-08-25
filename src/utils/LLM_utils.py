@@ -19,7 +19,7 @@ def generate_response_gpt(prompt):
 def generate_response_lama_server(prompt):
 
     client = openai.OpenAI(
-        base_url="http://localhost:8001/v1",
+        base_url="http://localhost:8000/v1",
         api_key="tom",
     )
 
@@ -81,5 +81,5 @@ if __name__ == "__main__":
 
     for prompt in prompts:
         print(Fore.LIGHTMAGENTA_EX + prompt, end="\n")
-        answer = generate_response_gpt(prompt)
+        answer = generate_response_lama_server(prompt)
         print(Fore.LIGHTBLUE_EX + answer, end="\n\n")

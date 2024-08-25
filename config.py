@@ -68,7 +68,7 @@ TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
 TFIDF_WORDS_PER_CLUSTER = 15
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
-N_POST_PER_CLUSTER = 10_000
+N_POST_PER_CLUSTER = 50_000
 
 # topic Naming
 LLM_NAME = "gpt"
@@ -84,4 +84,5 @@ NUMBER_OF_OPTIONS = 5
 TEST_LLM_ACCURACY_FILE = os.path.join(OUTPUT_DIR, "test_llm_accuracy.json")
 
 # final pandas dataframe
+CHUNK_SIZE = 1e7
 FINAL_DATAFRAME = os.path.join(OUTPUT_DIR, "final_dataframe.csv")

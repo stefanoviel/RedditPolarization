@@ -44,11 +44,14 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict,
     # Execute a query for each cluster and yield results
     for cluster, ids in cluster_to_ids.items():
         # take a N_POST_PER_CLUSTER random sample from each cluster
-        ids = np.random.choice(ids, N_POST_PER_CLUSTER, replace=False)
+
+        if len(ids) > N_POST_PER_CLUSTER:
+            ids = np.random.choice(ids, N_POST_PER_CLUSTER, replace=False)
+            
         decode_ids = [id.decode('utf-8') for id in ids]
 
         placeholders = ','.join(['?'] * len(decode_ids))  # Prepare placeholders for SQL query
-        
+
         s = time.time()
         # not good practice, sorry
         query = f"""
@@ -130,14 +133,11 @@ def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLU
     cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
     print('cluster to id')
     iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME, N_POST_PER_CLUSTER)
-    # tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
+    tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
 
-    for n, post in enumerate(iterator_posts_in_cluster): 
-        print(n)
-
-    # unique_cluster_order = list(cluster_to_ids.keys())
-    # top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_cluster_order, TFIDF_WORDS_PER_CLUSTER)
-    # save_json(top_words_per_document, TFIDF_FILE)
+    unique_cluster_order = list(cluster_to_ids.keys())
+    top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_cluster_order, TFIDF_WORDS_PER_CLUSTER)
+    save_json(top_words_per_document, TFIDF_FILE)
 
 
 if __name__ == "__main__":

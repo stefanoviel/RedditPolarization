@@ -1,32 +1,5 @@
-there is some stocasticity in the dimensionality reduction. for the final result it would probably require multiple runs. 
-score filtering should differe every year (e.g. keep only the one with the 50% highest scores)
-trustworthiness takes very long on small dataset (more than one minutes fro 500k embeddings). Testing done with this metrics will have to be run on a subset.
-add min_df=2, ngram_range=(1, 2) in TF-IDF
-put random seeds everywhere
+module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6 cuda/12.1.1there is some stocasticity in the dimensionality 
 
 
-
-module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6 cuda/12.1.1
-
-
-return TF-IDF matrix, do clustering on that
-
-Order code, make it pretty
-Get it running on the cluster, and scale up to whole dataset
-
-
-TODO: 
-nice memory logging in understand what is the limit
-`
-
-goes out of memory
-* something different other than loading everythin in memory => load in file
-* how much memory is it needed? 
-
-
-
-
-LLM evaluation labeling
-LLM topic modelling
-
+What would be necessary in order to do the paper? 
 

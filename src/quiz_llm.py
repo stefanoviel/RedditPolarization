@@ -139,4 +139,4 @@ def run_quiz_multiple_times(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,
     return all_accuracies
 
 if __name__ == "__main__": 
-    run_function_with_overrides(run_quiz_multiple_times, config)
+    run_function_with_overrides(solve_quiz, config)

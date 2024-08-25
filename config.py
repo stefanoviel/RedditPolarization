@@ -1,3 +1,5 @@
+# This file contains all the configuration parameters for the project.
+
 import os
 import time
 

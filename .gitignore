@@ -6,3 +6,4 @@ __pycache__/
 .venv/*
 db_config.yaml
 log_scripts/
+TODO

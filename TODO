@@ -1,5 +1,0 @@
-module load stack/.2024-05-silent  gcc/13.2.0 python_cuda/3.11.6 cuda/12.1.1there is some stocasticity in the dimensionality 
-
-
-What would be necessary in order to do the paper? 
-

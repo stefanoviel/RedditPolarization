@@ -15,6 +15,8 @@ from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import run_tf_idf
 from src.quiz_llm import run_quiz_multiple_times
 
+
+# this script assume that the embedding have already been created
 def main(partial_fit_dim_reduction, tf_idf_file):
     config.PARTIAL_FIT_DIM_REDUCTION = partial_fit_dim_reduction
     folder = os.path.join(config.OUTPUT_DIR, 'tf_idfs')  # create a folder to save all tf-idf file 

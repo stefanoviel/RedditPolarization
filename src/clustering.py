@@ -199,7 +199,7 @@ def save_cluster_centroids(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_
 
 
 
-def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, PARTIAL_FIT_CLUSTER: float):
+def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, PARTIAL_FIT_CLUSTER: float, CENTROIDS_DB_NAME: str):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
     print("data shape", data.shape)
 
@@ -220,6 +220,8 @@ def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB
     logger.info(f"number of clusters: {len(np.unique(clusters))}, percentage of non-noise: {percentage_non_noise}")
 
     save_h5py(clusters, PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
+
+    save_cluster_centroids(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME, CENTROIDS_DB_NAME)
 
 
 def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, SUBCLUSTER_DB_NAME: str):

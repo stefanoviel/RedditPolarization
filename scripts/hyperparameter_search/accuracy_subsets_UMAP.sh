@@ -13,7 +13,7 @@ echo "loaded stack"
 export OMP_NUM_THREADS=16
 ulimit -n 4096  # to allow duckdb to open all files
 
-subset_sizes=(0.00001 0.0001 0.001 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
+subset_sizes=(0.00001 0.0001 0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
 
 # Loop through each subset size and run the dimensionality reduction, clustering, tfidf and ChatGPT Quiz
 # the differet tf_idf are saved under the name tfids_$size.json

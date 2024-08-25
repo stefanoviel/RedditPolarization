@@ -9,7 +9,7 @@ if 'cluster' in os.getcwd():
     EXPERIMENT_NAME = "2008_2023"
     OUTPUT_DIR = os.path.join("/cluster/work/coss/stviel/output" , EXPERIMENT_NAME)
 else: 
-    EXPERIMENT_NAME = "2008_2023"
+    EXPERIMENT_NAME = "testing_different_subsets"
     OUTPUT_DIR = os.path.join("output" , EXPERIMENT_NAME)
 
 if not os.path.exists(OUTPUT_DIR):
@@ -81,7 +81,7 @@ RESOLUTION_PARAMETER = [0.5, 1, 1.5, 2]
 
 # quiz & coherence
 N_QUIZ = 100
-NUM_RUNS = 1
+NUM_RUNS = 5
 NUMBER_OF_OPTIONS = 5
 TEST_LLM_ACCURACY_FILE = os.path.join(OUTPUT_DIR, "test_llm_accuracy.json")
 

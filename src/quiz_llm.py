@@ -130,6 +130,7 @@ def solve_quiz(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME, TABLE_NAME, 
         # response = tokenizer.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
         response = generate_response_gpt(prompt)
+        # response = generate_response_lama_server(prompt)
         try:
             response = json.loads(response)
         except Exception as e:
@@ -153,7 +154,7 @@ def run_quiz_multiple_times(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,
 
     for _ in range(NUM_RUNS):
         accuracy = solve_quiz(
-            PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME, TABLE_NAME, TFIDF_FILE, DATABASE_PATH, LLM_NAME, NUMBER_OF_OPTIONS, N_QUIZ, CENTROIDS_DB_NAME
+            PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME, TABLE_NAME, TFIDF_FILE, DATABASE_PATH, NUMBER_OF_OPTIONS, N_QUIZ, CENTROIDS_DB_NAME
         )
         all_accuracies.append(accuracy)
 
@@ -168,4 +169,4 @@ def run_quiz_multiple_times(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME, IDS_DB_NAME,
     return all_accuracies
 
 if __name__ == "__main__": 
-    run_function_with_overrides(solve_quiz, config)
+    run_function_with_overrides(run_quiz_multiple_times, config)

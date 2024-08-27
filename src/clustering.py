@@ -224,21 +224,27 @@ def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB
     save_cluster_centroids(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME, CENTROIDS_DB_NAME)
 
 
-def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, SUBCLUSTER_DB_NAME: str):
+def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, SUBCLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, PARTIAL_FIT_CLUSTER: float):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
     clusters = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
 
     all_sub_clusters = np.full_like(clusters, -1)  # Initialize with -1 for noise
     max_label_used = -1
 
-    for cluster in np.unique(clusters):
+    for n, cluster in enumerate(np.unique(clusters)):
+        if n == 2: 
+            break
+
         if cluster == -1:
             continue
 
         cluster_data = data[clusters == cluster]
         print(f"Cluster {cluster}: {cluster_data.shape[0]}")
 
-        best_params, DBCV_scores = search_best_dbcv(cluster_data)
+        if len(HDBS_MIN_CLUSTERSIZE_SEARCH) == 1 and len(HDBS_MIN_SAMPLES_SEARCH) == 1:  # no search needs to be done
+            best_params = {'min_cluster_size': int(HDBS_MIN_CLUSTERSIZE_SEARCH[0]), 'min_samples': int(HDBS_MIN_SAMPLES_SEARCH[0])}
+        else:
+            best_params, DBCV_scores = search_best_dbcv(data, HDBS_MIN_CLUSTERSIZE_SEARCH, HDBS_MIN_SAMPLES_SEARCH, PARTIAL_FIT_CLUSTER, PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME)
 
         scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
         sub_clusters = scanner.fit_predict(cluster_data)

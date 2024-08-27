@@ -12,7 +12,7 @@ from src.dimensionality_reduction import UMAP_partial_fit_partial_transform
 from src.clustering import hdbscan_cluster_data, run_dbscan_partial_fit
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import run_tf_idf
-from src.create_db import create_db
+from create_dataframe import create_db
 
 def main():
     if not os.path.exists(config.OUTPUT_DIR):

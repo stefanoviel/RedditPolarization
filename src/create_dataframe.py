@@ -52,10 +52,11 @@ def create_db(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME
 
 
 
-def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME, TFIDF_FILE, TABLE_NAME, FINAL_DATAFRAME, CHUNK_SIZE):
+def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME, SUBCLUSTER_DB_NAME, TABLE_NAME, FINAL_DATAFRAME, CHUNK_SIZE):
     con = connect_to_existing_database(DATABASE_PATH)
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
     post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
+    post_subcluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, SUBCLUSTER_DB_NAME)
 
     decoded_ids = [id.decode('utf-8') for id in ids]
     CHUNK_SIZE = int(CHUNK_SIZE)
@@ -66,12 +67,13 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
 
     # Open the CSV file in write mode for the first chunk
     is_first_chunk = True
-
+ 
     print('Total chunks:', len(decoded_ids)//CHUNK_SIZE)
     for i in range(0, len(decoded_ids), CHUNK_SIZE):
         # Create a chunk of IDs
         chunk_ids = decoded_ids[i:i + CHUNK_SIZE]
         chunk_clusters = post_cluster_assignment[i:i + CHUNK_SIZE]
+        chunk_subclusters = post_subcluster_assignment[i:i + CHUNK_SIZE]
 
         # Formulate the query for this chunk
         query = f"SELECT id, subreddit, created_utc, author FROM {TABLE_NAME} WHERE id IN ({','.join(['?']*len(chunk_ids))})"
@@ -87,7 +89,7 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         chunk_df = pd.DataFrame(rows, columns=columns)
 
         # Add the post_cluster_assignment as a new column
-        cluster_topic_df = pd.DataFrame({'id': chunk_ids, 'cluster': chunk_clusters})
+        cluster_topic_df = pd.DataFrame({'id': chunk_ids, 'cluster': chunk_clusters, 'subcluster': chunk_subclusters})
         chunk_df = chunk_df.merge(cluster_topic_df, on='id')
         print(f'Merged for chunk {i//CHUNK_SIZE + 1}')
 

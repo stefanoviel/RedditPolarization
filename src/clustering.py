@@ -232,8 +232,6 @@ def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY
     max_label_used = -1
 
     for n, cluster in enumerate(np.unique(clusters)):
-        if n == 2: 
-            break
 
         if cluster == -1:
             continue

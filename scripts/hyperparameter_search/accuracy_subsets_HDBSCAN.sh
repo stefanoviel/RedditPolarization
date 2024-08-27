@@ -20,5 +20,5 @@ subset_sizes=(0.00001 0.0001 0.001 0.01 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0)
 for size in "${subset_sizes[@]}"
 do
     echo "Running UMAP with subset size $size"
-    python scripts/start_from_hdbscan.py --partial_fit_dim_reduction $size --tfidf_file tfids_$size.json
+    python scripts/start_from_hdbscan.py --w $size --tfidf_file tfids_$size.json
 done

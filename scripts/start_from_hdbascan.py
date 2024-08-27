@@ -16,6 +16,7 @@ from src.quiz_llm import run_quiz_multiple_times
 # this script assume that the embedding have already been created
 def main(partial_fit_hdbscan, tf_idf_file):
     config.PARTIAL_FIT_CLUSTER = partial_fit_hdbscan
+    config.PARTIAL_FIT_DIM_REDUCTION = 0.1
     folder = os.path.join(config.OUTPUT_DIR, 'tf_idfs')  # create a folder to save all tf-idf file 
     
     if not os.path.exists(folder):

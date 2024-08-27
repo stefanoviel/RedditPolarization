@@ -11,7 +11,7 @@ import time
 from src.clustering import apply_clustering_existing_clusters
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import run_tf_idf
-from src.quiz_llm import run_quiz_multiple_times
+from src.naming_topics import naming_topics_in_tfidf_file
 
 
 def main():
@@ -23,10 +23,12 @@ def main():
     config.CLUSTER_DB_NAME = config.SUBCLUSTER_DB_NAME
     config.TFIDF_FILE = config.SUBCLUSTER_TFIDF_FILE
     time_tfidf = run_function_with_overrides(run_tf_idf, config)
+    time_naming_topics = run_function_with_overrides(naming_topics_in_tfidf_file, config)
 
     logger.info("-------------------------------")
     logger.info(f"Time for HDBSCAN: {time_hdbscan} s")
     logger.info(f"Time for TF-IDF: {time_tfidf:,} s")
+    logger.info(f"Time for naming topics: {time_naming_topics} s")
 
 
 if __name__ == "__main__":

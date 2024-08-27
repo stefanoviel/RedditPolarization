@@ -74,6 +74,7 @@ N_POST_PER_CLUSTER = 50_000
 
 # topic Naming
 LLM_NAME = "gpt"
+CLUSTER_AND_TOPIC_NAMES = os.path.join(OUTPUT_DIR, "cluster_and_topic_names.csv")
 
 # hierarchical topic discovery
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")

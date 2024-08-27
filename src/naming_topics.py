@@ -37,9 +37,7 @@ def process_topics(tfidf_data, prompt, LLM_NAME):
         print(f"Words {words} -> {response['topic']}")
     return topic_naming
 
-def main(TFIDF_FILE, FINAL_DATAFRAME, LLM_NAME):
-
-    # TODO: fix prompt, sometime it outputs '''json '''
+def naming_topics_in_tfidf_file(TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):
 
     PROMPT = """Given the following lists of words, each associated with a cluster number, identify a succinct topic that captures the essence of the words in each list. Below are examples of the expected JSON output format.
 
@@ -67,11 +65,7 @@ def main(TFIDF_FILE, FINAL_DATAFRAME, LLM_NAME):
     tfidf_data = load_json(TFIDF_FILE)
     topic_naming = process_topics(tfidf_data, PROMPT, LLM_NAME)
     df = pd.DataFrame(topic_naming, columns=["cluster", "topic"])
-    final_df = pd.read_csv(FINAL_DATAFRAME)
-
-    final_df = final_df.merge(df, on="cluster", how='left')
-    print(final_df.head())
-    final_df.to_csv(FINAL_DATAFRAME, index=False)
+    df.to_csv(CLUSTER_AND_TOPIC_NAMES, index=False)
 
 
 
@@ -79,4 +73,4 @@ def main(TFIDF_FILE, FINAL_DATAFRAME, LLM_NAME):
 
 
 if __name__ == "__main__": 
-    run_function_with_overrides(main, config)
+    run_function_with_overrides(naming_topics_in_tfidf_file, config)

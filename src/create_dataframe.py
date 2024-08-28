@@ -51,7 +51,6 @@ def create_db(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME
     df.to_csv(FINAL_DATAFRAME, index=False)
 
 
-
 def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME, SUBCLUSTER_DB_NAME, TABLE_NAME, FINAL_DATAFRAME, CHUNK_SIZE):
     con = connect_to_existing_database(DATABASE_PATH)
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
@@ -87,9 +86,10 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         # Define the column names based on the SELECT statement
         columns = ['id', 'subreddit', 'created_utc', 'author']
         chunk_df = pd.DataFrame(rows, columns=columns)
+        urls = [f'https://www.reddit.com/r/{subreddit}/comments/{id}/' for subreddit, id in zip(chunk_df.subreddit, chunk_df.id)]
 
         # Add the post_cluster_assignment as a new column
-        cluster_topic_df = pd.DataFrame({'id': chunk_ids, 'cluster': chunk_clusters, 'subcluster': chunk_subclusters})
+        cluster_topic_df = pd.DataFrame({'id': chunk_ids, 'cluster': chunk_clusters, 'subcluster': chunk_subclusters, "url": urls})
         chunk_df = chunk_df.merge(cluster_topic_df, on='id')
         print(f'Merged for chunk {i//CHUNK_SIZE + 1}')
 
@@ -105,8 +105,6 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
     # Close the database connection
     con.close()
     print('Database connection closed.')
-
-
 
 
 

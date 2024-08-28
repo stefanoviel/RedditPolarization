@@ -75,7 +75,7 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         chunk_subclusters = post_subcluster_assignment[i:i + CHUNK_SIZE]
 
         # Formulate the query for this chunk
-        query = f"SELECT id, subreddit, created_utc, author FROM {TABLE_NAME} WHERE id IN ({','.join(['?']*len(chunk_ids))})"
+        query = f"SELECT DISTINCT id, subreddit, created_utc, author FROM {TABLE_NAME} WHERE id IN ({','.join(['?']*len(chunk_ids))})"
         cursor = con.execute(query, chunk_ids)
         print(f'Query executed for chunk {i//CHUNK_SIZE + 1}')
         
@@ -88,10 +88,9 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         chunk_df = pd.DataFrame(rows, columns=columns)
         urls = [f'https://www.reddit.com/r/{subreddit}/comments/{id}/' for subreddit, id in zip(chunk_df.subreddit, chunk_df.id)]
 
-        # Add the post_cluster_assignment as a new column
-        cluster_topic_df = pd.DataFrame({'id': chunk_ids, 'cluster': chunk_clusters, 'subcluster': chunk_subclusters, "url": urls})
-        chunk_df = chunk_df.merge(cluster_topic_df, on='id')
-        print(f'Merged for chunk {i//CHUNK_SIZE + 1}')
+        # Get the corresponding cluster for each chunk_df.id (some ids might be duplicates)
+        chunk_df['cluster'] = [chunk_clusters[chunk_ids.index(id)] for id in chunk_df.id]
+        chunk_df['subcluster'] = [chunk_subclusters[chunk_ids.index(id)] for id in chunk_df.id]
 
         chunk_df = chunk_df[chunk_df.cluster != -1]  # Remove the unclustered posts
 
@@ -105,7 +104,6 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
     # Close the database connection
     con.close()
     print('Database connection closed.')
-
 
 
 if __name__ == "__main__":

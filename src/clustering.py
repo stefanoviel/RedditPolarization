@@ -224,7 +224,7 @@ def hdbscan_cluster_data(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB
     save_cluster_centroids(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME, CLUSTER_DB_NAME, CENTROIDS_DB_NAME)
 
 
-def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, SUBCLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, PARTIAL_FIT_CLUSTER: float):
+def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA: str, DIMENSIONALITY_REDUCTION_DB_NAME: str, CLUSTER_DB_NAME: str, SUBCLUSTER_DB_NAME: str, HDBS_MIN_CLUSTERSIZE_SEARCH: list, HDBS_MIN_SAMPLES_SEARCH: list, PARTIAL_FIT_CLUSTER: float):
     data = load_h5py(PROCESSED_REDDIT_DATA, DIMENSIONALITY_REDUCTION_DB_NAME)
     clusters = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
 
@@ -236,8 +236,10 @@ def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY
         if cluster == -1:
             continue
 
-        cluster_data = data[clusters == cluster]
-        print(f"Cluster {cluster}: {cluster_data.shape[0]}")
+        # Get the indices of the points that belong to the current cluster
+        cluster_indices = np.where(clusters == cluster)[0]
+        cluster_data = data[cluster_indices]
+        print(f"Cluster {cluster} size: {cluster_data.shape[0]}")
 
         if len(HDBS_MIN_CLUSTERSIZE_SEARCH) == 1 and len(HDBS_MIN_SAMPLES_SEARCH) == 1:  # no search needs to be done
             best_params = {'min_cluster_size': int(HDBS_MIN_CLUSTERSIZE_SEARCH[0]), 'min_samples': int(HDBS_MIN_SAMPLES_SEARCH[0])}
@@ -247,19 +249,21 @@ def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY
         scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
         sub_clusters = scanner.fit_predict(cluster_data)
 
-        print(f"Number of subclusters: {len(np.unique(sub_clusters))}")
+        print(f"Number of sub-clusters found: {len(np.unique(sub_clusters))}")
 
-
-        # Ensure unique labels across different parent clusters
-        valid_sub_clusters = sub_clusters[sub_clusters != -1]
+        # Adjust only non-noise clusters (sub_clusters != -1)
+        valid_mask = sub_clusters != -1
+        valid_sub_clusters = sub_clusters[valid_mask]
         unique_valid_sub_clusters = valid_sub_clusters + max_label_used + 1
-        max_label_used = np.max(unique_valid_sub_clusters) if unique_valid_sub_clusters.size > 0 else max_label_used
         
-        # Apply back only to non-noise points
-        all_sub_clusters[(clusters == cluster) & (sub_clusters != -1)] = unique_valid_sub_clusters
+        if unique_valid_sub_clusters.size > 0:
+            max_label_used = np.max(unique_valid_sub_clusters)
 
+        # Assign the unique valid sub-cluster labels back to the correct positions in the full dataset
+        all_sub_clusters[cluster_indices[valid_mask]] = unique_valid_sub_clusters
 
     save_h5py(all_sub_clusters, PROCESSED_REDDIT_DATA, SUBCLUSTER_DB_NAME)
+
 
 
 if __name__ == "__main__":

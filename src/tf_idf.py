@@ -43,8 +43,8 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict,
     """
     # Execute a query for each cluster and yield results
     for cluster, ids in cluster_to_ids.items():
+        
         # take a N_POST_PER_CLUSTER random sample from each cluster
-
         if len(ids) > N_POST_PER_CLUSTER:
             ids = np.random.choice(ids, N_POST_PER_CLUSTER, replace=False)
             
@@ -66,6 +66,13 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict,
         yield all_posts_in_cluster
         print(f"Cluster {cluster} has {len(posts)} posts (limited to {N_POST_PER_CLUSTER}) and took {time.time() - s} seconds to process.")
 
+
+def get_all_posts_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict, TABLE_NAME: str):
+
+    all_posts = []
+    for posts in yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME):
+        all_posts.append(posts)
+    return all_posts
 
 
 def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
@@ -114,7 +121,7 @@ def compute_adjacency_matrix(tfidf_matrix, all_clusters):
     return adjacency_matrix
 
 
-def TF_IDF_matrix(documents:pd.Series, TFIDF_MAX_FEATURES:str):
+def TF_IDF_matrix(documents, TFIDF_MAX_FEATURES:str):
     my_stop_words = list(text.ENGLISH_STOP_WORDS.union(["https", "com", "www", "ve", "http", "amp"]))
     print('stop words')
     tfidf_vectorizer = TfidfVectorizer(stop_words=my_stop_words, lowercase=True,  max_features=TFIDF_MAX_FEATURES)
@@ -163,10 +170,10 @@ def tf_idf_on_subclusters(DATABASE_PATH: str, PROCESSED_REDDIT_DATA: str, TABLE_
         subcluster_to_ids = {subcluster: ids for subcluster, ids in subclusters.items()}
 
         # Generate posts for each subcluster
-        iterator_posts_in_subcluster = yield_post_per_cluster(con, subcluster_to_ids, TABLE_NAME, N_POST_PER_CLUSTER)
+        all_posts_per_cluster = get_all_posts_per_cluster(con, subcluster_to_ids, TABLE_NAME)
 
         # Compute TF-IDF matrix for the subclusters
-        tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_subcluster, TFIDF_MAX_FEATURES)
+        tfidf_matrix, feature_names = TF_IDF_matrix(all_posts_per_cluster, TFIDF_MAX_FEATURES)
 
         # Get unique subclusters for this cluster
         unique_subcluster_order = list(subclusters.keys())

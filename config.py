@@ -61,7 +61,7 @@ CENTROIDS_DB_NAME = "centroids"
 SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 30
 HDBS_MIN_SAMPLES = 30
-HDBS_MIN_CLUSTERSIZE_SEARCH = [100] # [0.0005, 0.001, 0.005, 0.01]
+HDBS_MIN_CLUSTERSIZE_SEARCH = [300] # [0.0005, 0.001, 0.005, 0.01]
 HDBS_MIN_SAMPLES_SEARCH = [20] # [5, 10, 20]
 PARTIAL_FIT_CLUSTER = 0.15  # it might not be used, depending on the employed function
 
@@ -70,7 +70,7 @@ TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
 TFIDF_WORDS_PER_CLUSTER = 15
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
-N_POST_PER_CLUSTER = 50_000
+N_POST_PER_CLUSTER = 5_000
 
 # topic Naming
 LLM_NAME = "gpt"

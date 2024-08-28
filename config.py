@@ -47,7 +47,7 @@ if 'cluster' in os.getcwd():
 else:
     UMAP_MODEL_SAVE_PATH = None  # if set to None, the model doesn't get saved or loaded
 UMAP_COMPONENTS = 5
-UMAP_N_Neighbors = 5 # increase this to get more global structure
+UMAP_N_Neighbors = 5 # increase this to get more global structurey
 UMAP_MINDIST = 0
 PARTIAL_FIT_DIM_REDUCTION = 0.1
 PARTIAL_TRANSFORM_DIM_REDUCTION = 0.1
@@ -70,7 +70,7 @@ TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
 TFIDF_WORDS_PER_CLUSTER = 15
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
-N_POST_PER_CLUSTER = 5_000
+N_POST_PER_CLUSTER = 5000
 
 # topic Naming
 LLM_NAME = "gpt"

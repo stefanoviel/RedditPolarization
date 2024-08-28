@@ -15,6 +15,8 @@ import cuml
 import pandas as pd
 import time
 from tqdm import tqdm
+import random
+from typing import List, Dict
 from src.utils.function_runner import run_function_with_overrides, execute_with_gpu_logging
 from src.utils.utils import connect_to_existing_database, load_json, save_h5py, load_h5py, save_json
 
@@ -67,12 +69,63 @@ def yield_post_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict,
         print(f"Cluster {cluster} has {len(posts)} posts (limited to {N_POST_PER_CLUSTER}) and took {time.time() - s} seconds to process.")
 
 
-def get_all_posts_per_cluster(con: duckdb.DuckDBPyConnection, cluster_to_ids: dict, TABLE_NAME: str):
 
-    all_posts = []
-    for posts in yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME):
-        all_posts.append(posts)
-    return all_posts
+def fetch_posts_per_cluster(
+    con: duckdb.DuckDBPyConnection,
+    cluster_to_ids: Dict[int, List[bytes]],
+    TABLE_NAME: str,
+    N_POST_PER_CLUSTER: int
+) -> List[str]:
+
+    # Prepare data for the query
+    all_ids = []
+    cluster_mapping = []
+    for cluster, ids in cluster_to_ids.items():
+        # Sample N_POST_PER_CLUSTER ids if necessary
+        sampled_ids = random.sample(ids, min(len(ids), N_POST_PER_CLUSTER))
+        all_ids.extend(id.decode('utf-8') for id in sampled_ids)
+        cluster_mapping.extend([cluster] * len(sampled_ids))
+
+    # Process in batches of 50,000
+    BATCH_SIZE = 500_000
+    cluster_posts = {}
+    total_fetched = 0
+    start_time = time.time()
+
+    for i in range(0, len(all_ids), BATCH_SIZE):
+        batch_ids = all_ids[i:i+BATCH_SIZE]
+        batch_clusters = cluster_mapping[i:i+BATCH_SIZE]
+
+        # Prepare the query for this batch
+        placeholders = ','.join(['?'] * len(batch_ids))
+        query = f"""
+        SELECT 
+            title,
+            selftext
+        FROM {TABLE_NAME}
+        WHERE id IN ({placeholders})
+        """
+
+        # Execute the query for this batch
+        print(f"Executing query for batch {i//BATCH_SIZE + 1}, number of posts to fetch: {len(batch_ids)}")
+        cursor = con.execute(query, batch_ids)
+        results = cursor.fetchall()
+
+        # Process the results for this batch
+        for cluster, title, selftext in zip(batch_clusters, *zip(*results)):
+            if cluster not in cluster_posts:
+                cluster_posts[cluster] = []
+            cluster_posts[cluster].append(f"{title} {selftext}")
+
+        total_fetched += len(results)
+
+    # Concatenate posts for each cluster
+    concatenated_posts = [" ".join(posts) for posts in cluster_posts.values()]
+
+    print(f"Fetched {total_fetched} posts for {len(cluster_posts)} clusters in {time.time() - start_time:.2f} seconds.")
+
+    return concatenated_posts
+
 
 
 def extract_top_words(tfidf_matrix, feature_names, unique_clusters, top_n=10):
@@ -136,7 +189,7 @@ def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLU
 
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
     post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
-    con =  connect_to_existing_database(DATABASE_PATH)
+    con = connect_to_existing_database(DATABASE_PATH)
     cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
     iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME, N_POST_PER_CLUSTER)
     tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
@@ -152,25 +205,23 @@ def tf_idf_on_subclusters(DATABASE_PATH: str, PROCESSED_REDDIT_DATA: str, TABLE_
     con = connect_to_existing_database(DATABASE_PATH)
 
     # Create a dictionary to map cluster IDs to subcluster IDs
-    cluster_to_subclusters = {}
+    cluster_to_subclusters_to_id = {}
     for cluster, subcluster, id in zip(post_cluster_assignment, post_subcluster_assignment, ids):
-        if cluster not in cluster_to_subclusters:
-            cluster_to_subclusters[cluster] = {}
-        if subcluster not in cluster_to_subclusters[cluster]:
-            cluster_to_subclusters[cluster][subcluster] = []
-        cluster_to_subclusters[cluster][subcluster].append(id)
+        if cluster not in cluster_to_subclusters_to_id:
+            cluster_to_subclusters_to_id[cluster] = {}
+        if subcluster not in cluster_to_subclusters_to_id[cluster]:
+            cluster_to_subclusters_to_id[cluster][subcluster] = []
+        cluster_to_subclusters_to_id[cluster][subcluster].append(id)
 
     all_top_words = {}
 
-    for cluster, subclusters in tqdm(cluster_to_subclusters.items(), desc="Processing clusters"):
+    for cluster, subclusters in tqdm(cluster_to_subclusters_to_id.items(), desc="Processing clusters"):
         if cluster == -1:
             continue
-        
-        # Map subcluster IDs to post IDs
-        subcluster_to_ids = {subcluster: ids for subcluster, ids in subclusters.items()}
+
 
         # Generate posts for each subcluster
-        all_posts_per_cluster = get_all_posts_per_cluster(con, subcluster_to_ids, TABLE_NAME)
+        all_posts_per_cluster = fetch_posts_per_cluster(con, subclusters, TABLE_NAME, N_POST_PER_CLUSTER)
 
         # Compute TF-IDF matrix for the subclusters
         tfidf_matrix, feature_names = TF_IDF_matrix(all_posts_per_cluster, TFIDF_MAX_FEATURES)

@@ -131,7 +131,6 @@ def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLU
     post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
     con =  connect_to_existing_database(DATABASE_PATH)
     cluster_to_ids = map_ids_to_clusters(ids, post_cluster_assignment)
-    print('cluster to id')
     iterator_posts_in_cluster = yield_post_per_cluster(con, cluster_to_ids, TABLE_NAME, N_POST_PER_CLUSTER)
     tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_cluster, TFIDF_MAX_FEATURES)
 
@@ -139,12 +138,54 @@ def run_tf_idf(DATABASE_PATH:str, PROCESSED_REDDIT_DATA:str, TABLE_NAME:str, CLU
     top_words_per_document = extract_top_words(tfidf_matrix, feature_names, unique_cluster_order, TFIDF_WORDS_PER_CLUSTER)
     save_json(top_words_per_document, TFIDF_FILE)
 
+def tf_idf_on_subclusters(DATABASE_PATH: str, PROCESSED_REDDIT_DATA: str, TABLE_NAME: str, SUBCLUSTER_DB_NAME: str, CLUSTER_DB_NAME: str, IDS_DB_NAME: str, TFIDF_MAX_FEATURES: str, TFIDF_FILE: str, ADJACENCY_MATRIX: str, TFIDF_WORDS_PER_CLUSTER: int, N_POST_PER_CLUSTER: int):
+    ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
+    post_subcluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, SUBCLUSTER_DB_NAME)
+    post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
+    con = connect_to_existing_database(DATABASE_PATH)
+
+    # Create a dictionary to map cluster IDs to subcluster IDs
+    cluster_to_subclusters = {}
+    for cluster, subcluster, id in zip(post_cluster_assignment, post_subcluster_assignment, ids):
+        if cluster not in cluster_to_subclusters:
+            cluster_to_subclusters[cluster] = {}
+        if subcluster not in cluster_to_subclusters[cluster]:
+            cluster_to_subclusters[cluster][subcluster] = []
+        cluster_to_subclusters[cluster][subcluster].append(id)
+
+    all_top_words = {}
+
+    for cluster, subclusters in tqdm(cluster_to_subclusters.items(), desc="Processing clusters"):
+        if cluster == -1:
+            continue
+        
+        # Map subcluster IDs to post IDs
+        subcluster_to_ids = {subcluster: ids for subcluster, ids in subclusters.items()}
+
+        # Generate posts for each subcluster
+        iterator_posts_in_subcluster = yield_post_per_cluster(con, subcluster_to_ids, TABLE_NAME, N_POST_PER_CLUSTER)
+
+        # Compute TF-IDF matrix for the subclusters
+        tfidf_matrix, feature_names = TF_IDF_matrix(iterator_posts_in_subcluster, TFIDF_MAX_FEATURES)
+
+        # Get unique subclusters for this cluster
+        unique_subcluster_order = list(subclusters.keys())
+
+        # Extract top words for each subcluster
+        top_words_per_subcluster = extract_top_words(tfidf_matrix, feature_names, unique_subcluster_order, TFIDF_WORDS_PER_CLUSTER)
+
+        # Store the results
+        all_top_words[str(cluster)] = top_words_per_subcluster
+
+    # Save the results
+    save_json(all_top_words, TFIDF_FILE)
+
+
 
 if __name__ == "__main__":
+    # print("Total running time:", run_function_with_overrides(run_tf_idf, config))
 
-    # config.CLUSTER_FILE = config.SUBCLUSTER_FILE
-    # config.TFIDF_FILE = config.SUBCLUSTER_TFIDF_FILE
-    print("Total running time:", run_function_with_overrides(run_tf_idf, config))
+    print("Total running time:", run_function_with_overrides(tf_idf_on_subclusters, config))
 
 
 

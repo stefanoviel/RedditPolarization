@@ -247,17 +247,24 @@ def apply_clustering_existing_clusters(PROCESSED_REDDIT_DATA:str, DIMENSIONALITY
         scanner = cuml.cluster.hdbscan.HDBSCAN(min_cluster_size=best_params['min_cluster_size'], min_samples=best_params['min_samples'])
         sub_clusters = scanner.fit_predict(cluster_data)
 
+        print(f"Number of subclusters: {len(np.unique(sub_clusters))}")
+
+
         # Ensure unique labels across different parent clusters
-        unique_sub_clusters = sub_clusters + max_label_used + 1
-        max_label_used = np.max(unique_sub_clusters)
-        all_sub_clusters[clusters == cluster] = unique_sub_clusters
+        valid_sub_clusters = sub_clusters[sub_clusters != -1]
+        unique_valid_sub_clusters = valid_sub_clusters + max_label_used + 1
+        max_label_used = np.max(unique_valid_sub_clusters) if unique_valid_sub_clusters.size > 0 else max_label_used
+        
+        # Apply back only to non-noise points
+        all_sub_clusters[(clusters == cluster) & (sub_clusters != -1)] = unique_valid_sub_clusters
+
 
     save_h5py(all_sub_clusters, PROCESSED_REDDIT_DATA, SUBCLUSTER_DB_NAME)
 
 
 if __name__ == "__main__":
 
-    run_function_with_overrides(save_cluster_centroids, config)
-    # run_function_with_overrides(apply_clustering_existing_clusters, config)
+    run_function_with_overrides(apply_clustering_existing_clusters, config)
+
 
     

@@ -244,9 +244,9 @@ def tf_idf_on_subclusters(DATABASE_PATH: str, PROCESSED_REDDIT_DATA: str, TABLE_
 
 
 if __name__ == "__main__":
-    # print("Total running time:", run_function_with_overrides(run_tf_idf, config))
+    print("Total running time:", run_function_with_overrides(run_tf_idf, config))
 
-    print("Total running time:", run_function_with_overrides(tf_idf_on_subclusters, config))
+    # print("Total running time:", run_function_with_overrides(tf_idf_on_subclusters, config))
 
 
 

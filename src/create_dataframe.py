@@ -91,6 +91,7 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         # Get the corresponding cluster for each chunk_df.id (some ids might be duplicates)
         chunk_df['cluster'] = [chunk_clusters[chunk_ids.index(id)] for id in chunk_df.id]
         chunk_df['subcluster'] = [chunk_subclusters[chunk_ids.index(id)] for id in chunk_df.id]
+        chunk_df['url'] = urls
 
         chunk_df = chunk_df[chunk_df.cluster != -1]  # Remove the unclustered posts
 

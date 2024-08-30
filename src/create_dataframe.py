@@ -50,7 +50,7 @@ def create_db(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME
 
     df.to_csv(FINAL_DATAFRAME, index=False)
 
-def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME, SUBCLUSTER_DB_NAME, TABLE_NAME, FINAL_DATAFRAME, FINAL_URL_DATAFRAME, CHUNK_SIZE):
+def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER_DB_NAME, SUBCLUSTER_DB_NAME, TABLE_NAME, FINAL_DATAFRAME, CHUNK_SIZE, URL_DATAFRAME):
     con = connect_to_existing_database(DATABASE_PATH)
     ids = load_h5py(PROCESSED_REDDIT_DATA, IDS_DB_NAME)
     post_cluster_assignment = load_h5py(PROCESSED_REDDIT_DATA, CLUSTER_DB_NAME)
@@ -62,8 +62,8 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
     # Remove final data files if they exist
     if os.path.exists(FINAL_DATAFRAME):
         os.remove(FINAL_DATAFRAME)
-    if os.path.exists(FINAL_URL_DATAFRAME):
-        os.remove(FINAL_URL_DATAFRAME)
+    if os.path.exists(URL_DATAFRAME):
+        os.remove(URL_DATAFRAME)
 
     # Open the CSV file in write mode for the first chunk
     is_first_chunk = True
@@ -102,7 +102,7 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         url_df['url'] = 'https://www.reddit.com/r/' + url_df['subreddit'] + '/comments/' + url_df['id'] + '/'
 
         # Save the chunk of URLs to the URL DataFrame CSV
-        url_df.to_csv(FINAL_URL_DATAFRAME, mode='a', index=False, header=is_first_url_chunk)
+        url_df.to_csv(URL_DATAFRAME, mode='a', index=False, header=is_first_url_chunk)
         is_first_url_chunk = False  # After the first chunk, no need to write the header again for URLs
 
         # Filter out unclustered posts
@@ -114,7 +114,7 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         is_first_chunk = False  # After the first chunk, no need to write the header again for the main data
 
         print(f'Chunk {i // CHUNK_SIZE + 1} saved to {FINAL_DATAFRAME}')
-        print(f'URL chunk {i // CHUNK_SIZE + 1} saved to {FINAL_URL_DATAFRAME}')
+        print(f'URL chunk {i // CHUNK_SIZE + 1} saved to {URL_DATAFRAME}')
 
     # Close the database connection
     con.close()

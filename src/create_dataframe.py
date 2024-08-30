@@ -89,6 +89,9 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         columns = ['id', 'subreddit', 'created_utc', 'author']
         chunk_df = pd.DataFrame(rows, columns=columns)
 
+        # Filter out unclustered posts
+        chunk_df = chunk_df[chunk_df.cluster != -1]
+
         # Create a dictionary for faster lookup of clusters and subclusters
         id_to_cluster = dict(zip(chunk_ids, chunk_clusters))
         id_to_subcluster = dict(zip(chunk_ids, chunk_subclusters))
@@ -105,8 +108,6 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         url_df.to_csv(URL_DATAFRAME, mode='a', index=False, header=is_first_url_chunk)
         is_first_url_chunk = False  # After the first chunk, no need to write the header again for URLs
 
-        # Filter out unclustered posts
-        chunk_df = chunk_df[chunk_df.cluster != -1]
 
         # Save the chunk DataFrame to the main CSV file
         # If it's the first chunk, write the header; otherwise, append without header   

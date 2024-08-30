@@ -232,6 +232,7 @@ def tf_idf_on_subclusters(DATABASE_PATH: str, PROCESSED_REDDIT_DATA: str, TABLE_
 
         # Extract top words for each subcluster
         top_words_per_subcluster = extract_top_words(tfidf_matrix, feature_names, unique_subcluster_order, TFIDF_WORDS_PER_CLUSTER)
+        print("top words in subcluster ", subcluster, " ", top_words_per_subcluster)
 
         # Store the results
         all_top_words[str(cluster)] = top_words_per_subcluster

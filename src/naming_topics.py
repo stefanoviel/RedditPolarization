@@ -65,7 +65,7 @@ def parse_response(response, cluster):
         return "Error"
 
 
-def process_tfidf_file(tfidf_data, generate_response_func, llm_name):
+def process_tfidf_file(tfidf_data,  llm_name):
     """Process each topic and generate names using the model."""
     topic_naming = []
     
@@ -73,7 +73,7 @@ def process_tfidf_file(tfidf_data, generate_response_func, llm_name):
         if cluster == '-1': 
             continue
         prompt_text = generate_prompt(words)
-        response = generate_response_func(prompt_text, llm_name)
+        response = generate_response(prompt_text, llm_name)
         
         topic = parse_response(response, cluster)
         topic_naming.append([int(cluster), topic])
@@ -82,7 +82,7 @@ def process_tfidf_file(tfidf_data, generate_response_func, llm_name):
     
     return topic_naming
 
-def process_subtopics_tfidf_file(tfidf_data, generate_response_func, llm_name):
+def process_subtopics_tfidf_file(tfidf_data,  llm_name):
     """Process each subtopic and generate names using the model."""
     topic_naming = []
     
@@ -92,7 +92,7 @@ def process_subtopics_tfidf_file(tfidf_data, generate_response_func, llm_name):
                 continue
 
             prompt_text = generate_prompt(words)
-            response = generate_response_func(prompt_text, llm_name)
+            response = generate_response(prompt_text, llm_name)
             
             topic = parse_response(response, cluster)
             topic_naming.append([int(cluster), int(subcluster), topic])
@@ -102,18 +102,18 @@ def process_subtopics_tfidf_file(tfidf_data, generate_response_func, llm_name):
     return topic_naming
 
 
-def naming_topics_tfidf_file(tfidf_file, output_file, llm_name, generate_response_func):
-    """Load TF-IDF data, process topics, and save the results to a CSV file."""
-    
-    tfidf_data = load_json(tfidf_file)
-    topic_naming = process_tfidf_file(tfidf_data, generate_response_func, llm_name)
-    save_to_csv(topic_naming, output_file, columns=["cluster", "topic"])
+def naming_topics_tfidf_file(TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):    
+    tfidf_data = load_json(TFIDF_FILE)
+    topic_naming = process_tfidf_file(tfidf_data,  LLM_NAME)
+    save_to_csv(topic_naming, CLUSTER_AND_TOPIC_NAMES, columns=["cluster", "topic"])
 
 
-
-
+def naming_subtopics_subtfidf_file(SUBCLUSTER_TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):    
+    tfidf_data = load_json(SUBCLUSTER_TFIDF_FILE)
+    topic_naming = process_subtopics_tfidf_file(tfidf_data,  LLM_NAME)
+    save_to_csv(topic_naming, CLUSTER_AND_TOPIC_NAMES, columns=["cluster", "topic"])
 
 
 
 if __name__ == "__main__": 
-    run_function_with_overrides(naming_topics_in_tfidf_file, config)
+    run_function_with_overrides(naming_topics_tfidf_file, config)

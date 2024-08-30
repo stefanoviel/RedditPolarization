@@ -18,28 +18,14 @@ import pandas as pd
 import torch
 import json
 
-def process_topics(tfidf_data, prompt, LLM_NAME):
-    """Process each topic and generate names using the model."""
-    topic_naming = []
-    for cluster, words in list(tfidf_data.items()):
-        prompt_text = prompt.format(list_of_words=words)
-        response = generate_response(prompt_text, LLM_NAME)
-        try: 
-            response = json.loads(response)
-        except:
-            print(f"Error in cluster {cluster}")
-            print(f"Error response {response}")  # to see what the response lookied like and tune the prompt
-            
-            response = {"topic": "Error"}
-        if "topic" not in response:
-            continue
-        topic_naming.append([int(cluster), response["topic"]])
-        print(f"Words {words} -> {response['topic']}")
-    return topic_naming
+def save_to_csv(data, file_path, columns):
+    """Save a list of lists to a CSV file with specified columns."""
+    df = pd.DataFrame(data, columns=columns)
+    df.to_csv(file_path, index=False)
 
-def naming_topics_in_tfidf_file(TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):
-
-    PROMPT = """Given the following lists of words, each associated with a cluster number, identify a succinct topic that captures the essence of the words in each list. Below are examples of the expected JSON output format.
+def generate_prompt(list_of_words):
+    """Generate a prompt based on a list of words."""
+    PROMPT_TEMPLATE = """Given the following lists of words, each associated with a cluster number, identify a succinct topic that captures the essence of the words in each list. Below are examples of the expected JSON output format.
 
     Examples:
     - "game, team, season, like, time, year, player, play, games, 10" -> {{"topic": "Sports Analysis"}}
@@ -61,11 +47,68 @@ def naming_topics_in_tfidf_file(TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):
 
     Ensure that the output is in valid JSON format and is not surrounded by any extra formatting like '''json '''.
     """
+    return PROMPT_TEMPLATE.format(list_of_words=", ".join(list_of_words))
 
-    tfidf_data = load_json(TFIDF_FILE)
-    topic_naming = process_topics(tfidf_data, PROMPT, LLM_NAME)
-    df = pd.DataFrame(topic_naming, columns=["cluster", "topic"])
-    df.to_csv(CLUSTER_AND_TOPIC_NAMES, index=False)
+
+def parse_response(response, cluster):
+    """Parse the model's response and return the topic. If parsing fails, return an error topic."""
+    try:
+        response_json = json.loads(response)
+        if "topic" in response_json:
+            return response_json["topic"]
+        else:
+            print(f"Error in cluster {cluster}: Missing 'topic' key in response")
+            return "Error"
+    except json.JSONDecodeError:
+        print(f"Error in cluster {cluster}: Invalid JSON response")
+        print(f"Error response: {response}")
+        return "Error"
+
+
+def process_tfidf_file(tfidf_data, generate_response_func, llm_name):
+    """Process each topic and generate names using the model."""
+    topic_naming = []
+    
+    for cluster, words in list(tfidf_data.items()):
+        if cluster == '-1': 
+            continue
+        prompt_text = generate_prompt(words)
+        response = generate_response_func(prompt_text, llm_name)
+        
+        topic = parse_response(response, cluster)
+        topic_naming.append([int(cluster), topic])
+        
+        print(f"Words {words} -> {topic}")
+    
+    return topic_naming
+
+def process_subtopics_tfidf_file(tfidf_data, generate_response_func, llm_name):
+    """Process each subtopic and generate names using the model."""
+    topic_naming = []
+    
+    for cluster, subtopics in list(tfidf_data.items()):
+        for subcluster, words in list(subtopics.items()):
+            if subcluster == '-1': 
+                continue
+
+            prompt_text = generate_prompt(words)
+            response = generate_response_func(prompt_text, llm_name)
+            
+            topic = parse_response(response, cluster)
+            topic_naming.append([int(cluster), int(subcluster), topic])
+            
+            print(f"Words {words} -> {topic}")
+    
+    return topic_naming
+
+
+def naming_topics_tfidf_file(tfidf_file, output_file, llm_name, generate_response_func):
+    """Load TF-IDF data, process topics, and save the results to a CSV file."""
+    
+    tfidf_data = load_json(tfidf_file)
+    topic_naming = process_tfidf_file(tfidf_data, generate_response_func, llm_name)
+    save_to_csv(topic_naming, output_file, columns=["cluster", "topic"])
+
 
 
 

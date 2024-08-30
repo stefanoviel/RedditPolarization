@@ -61,9 +61,9 @@ CENTROIDS_DB_NAME = "centroids"
 SUBCLUSTER_DB_NAME = "subclusters"
 HDBS_MIN_CLUSTERSIZE= 30
 HDBS_MIN_SAMPLES = 30
-HDBS_MIN_CLUSTERSIZE_SEARCH = [50] # [0.0005, 0.001, 0.005, 0.01]
-HDBS_MIN_SAMPLES_SEARCH = [20] # [5, 10, 20]
-PARTIAL_FIT_CLUSTER = 0.15  # it might not be used, depending on the employed function
+HDBS_MIN_CLUSTERSIZE_SEARCH = [800] # [0.0005, 0.001, 0.005, 0.01]
+HDBS_MIN_SAMPLES_SEARCH = [30] # [5, 10, 20]
+PARTIAL_FIT_CLUSTER = 1  # it might not be used, depending on the employed function
 
 # tfidf
 TFIDF_MAX_FEATURES = 50_000  # Size of the vocabulary, None means no limitation
@@ -75,6 +75,7 @@ N_POST_PER_CLUSTER = 50_000
 # topic Naming
 LLM_NAME = "gpt"
 CLUSTER_AND_TOPIC_NAMES = os.path.join(OUTPUT_DIR, "cluster_and_topic_names.csv")
+SUBCLUSTER_AND_TOPIC_NAMES = os.path.join(OUTPUT_DIR, "subcluster_and_topic_names.csv")
 
 # hierarchical topic discovery
 ADJACENCY_MATRIX = os.path.join(OUTPUT_DIR, "adjacency_matrix.h5")

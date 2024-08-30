@@ -11,7 +11,6 @@ import time
 from src.clustering import apply_clustering_existing_clusters
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import tf_idf_on_subclusters
-from src.naming_topics import naming_topics_in_tfidf_file
 
 
 def main():

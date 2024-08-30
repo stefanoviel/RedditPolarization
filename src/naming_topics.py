@@ -107,11 +107,11 @@ def naming_topics_tfidf_file(TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):
     save_to_csv(topic_naming, CLUSTER_AND_TOPIC_NAMES, columns=["cluster", "words", "topic"])
 
 
-def naming_subtopics_subtfidf_file(SUBCLUSTER_TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):    
+def naming_subtopics_subtfidf_file(SUBCLUSTER_TFIDF_FILE, SUBCLUSTER_AND_TOPIC_NAMES, LLM_NAME):    
     tfidf_data = load_json(SUBCLUSTER_TFIDF_FILE)
     topic_naming = process_subtopics_tfidf_file(tfidf_data, LLM_NAME)
-    save_to_csv(topic_naming, CLUSTER_AND_TOPIC_NAMES, columns=["cluster", "subcluster", "words_subcluster", "topic_subcluster"])
+    save_to_csv(topic_naming, SUBCLUSTER_AND_TOPIC_NAMES, columns=["cluster", "subcluster", "words_subcluster", "topic_subcluster"])
 
 
 if __name__ == "__main__": 
-    run_function_with_overrides(naming_topics_tfidf_file, config)
+    run_function_with_overrides(naming_subtopics_subtfidf_file, config)

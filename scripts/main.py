@@ -12,7 +12,7 @@ from src.dimensionality_reduction import UMAP_partial_fit_partial_transform
 from src.clustering import hdbscan_cluster_data, run_dbscan_partial_fit
 from src.utils.function_runner import run_function_with_overrides
 from src.tf_idf import run_tf_idf
-from create_dataframe import create_db
+from create_dataframe import merge_topic_naming
 
 def main():
     if not os.path.exists(config.OUTPUT_DIR):
@@ -24,7 +24,7 @@ def main():
     # time_umap = run_function_with_overrides(UMAP_partial_fit_partial_transform, config)
     time_hdbscan = run_function_with_overrides(hdbscan_cluster_data, config)
     time_tfidf = run_function_with_overrides(run_tf_idf, config)
-    time_create_db = run_function_with_overrides(create_db, config)
+    time_create_db = run_function_with_overrides(merge_topic_naming, config)
 
 
     logger.info("-------------------------------")

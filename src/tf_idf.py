@@ -237,7 +237,6 @@ def tf_idf_on_subclusters(DATABASE_PATH: str, PROCESSED_REDDIT_DATA: str, TABLE_
         # Store the results
         all_top_words[str(cluster)] = top_words_per_subcluster
 
-        print("top_words_per_subcluster", top_words_per_subcluster)
 
     # Save the results
     save_json(all_top_words, SUBCLUSTER_TFIDF_FILE)

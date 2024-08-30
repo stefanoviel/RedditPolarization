@@ -92,3 +92,4 @@ TEST_LLM_ACCURACY_FILE = os.path.join(OUTPUT_DIR, "test_llm_accuracy.json")
 CHUNK_SIZE = 1e7
 FINAL_DATAFRAME = os.path.join(OUTPUT_DIR, "final_dataframe.csv")
 URL_DATAFRAME = os.path.join(OUTPUT_DIR, "url_dataframe.csv")
+TITLE_SELFTEXT_DATAFRAME = os.path.join(OUTPUT_DIR, "title_selftext_dataframe.csv")

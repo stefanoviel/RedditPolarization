@@ -1,4 +1,3 @@
-
 import os
 import sys
 
@@ -76,7 +75,7 @@ def process_tfidf_file(tfidf_data,  llm_name):
         response = generate_response(prompt_text, llm_name)
         
         topic = parse_response(response, cluster)
-        topic_naming.append([int(cluster), topic])
+        topic_naming.append([int(cluster), words, topic])
         
         print(f"Words {words} -> {topic}")
     
@@ -95,7 +94,7 @@ def process_subtopics_tfidf_file(tfidf_data,  llm_name):
             response = generate_response(prompt_text, llm_name)
             
             topic = parse_response(response, cluster)
-            topic_naming.append([int(cluster), int(subcluster), topic])
+            topic_naming.append([int(cluster), int(subcluster), words, topic])
             
             print(f"Words {words} -> {topic}")
     
@@ -105,14 +104,13 @@ def process_subtopics_tfidf_file(tfidf_data,  llm_name):
 def naming_topics_tfidf_file(TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):    
     tfidf_data = load_json(TFIDF_FILE)
     topic_naming = process_tfidf_file(tfidf_data,  LLM_NAME)
-    save_to_csv(topic_naming, CLUSTER_AND_TOPIC_NAMES, columns=["cluster", "topic"])
+    save_to_csv(topic_naming, CLUSTER_AND_TOPIC_NAMES, columns=["cluster", "words", "topic"])
 
 
 def naming_subtopics_subtfidf_file(SUBCLUSTER_TFIDF_FILE, CLUSTER_AND_TOPIC_NAMES, LLM_NAME):    
     tfidf_data = load_json(SUBCLUSTER_TFIDF_FILE)
-    topic_naming = process_subtopics_tfidf_file(tfidf_data,  LLM_NAME)
-    save_to_csv(topic_naming, CLUSTER_AND_TOPIC_NAMES, columns=["cluster", "topic"])
-
+    topic_naming = process_subtopics_tfidf_file(tfidf_data, LLM_NAME)
+    save_to_csv(topic_naming, CLUSTER_AND_TOPIC_NAMES, columns=["cluster", "subcluster", "words_subcluster", "topic_subcluster"])
 
 
 if __name__ == "__main__": 

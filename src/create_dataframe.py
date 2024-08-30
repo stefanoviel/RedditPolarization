@@ -83,15 +83,21 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         rows = cursor.fetchall()
         print(f'Rows fetched for chunk {i//CHUNK_SIZE + 1}')
         
-        # Define the column names based on the SELECT statement
+        # Create the DataFrame
         columns = ['id', 'subreddit', 'created_utc', 'author']
         chunk_df = pd.DataFrame(rows, columns=columns)
-        urls = [f'https://www.reddit.com/r/{subreddit}/comments/{id}/' for subreddit, id in zip(chunk_df.subreddit, chunk_df.id)]
 
-        # Get the corresponding cluster for each chunk_df.id (some ids might be duplicates)
-        chunk_df['cluster'] = [chunk_clusters[chunk_ids.index(id)] for id in chunk_df.id]
-        chunk_df['subcluster'] = [chunk_subclusters[chunk_ids.index(id)] for id in chunk_df.id]
-        chunk_df['url'] = urls
+        # Create a dictionary for faster lookup of clusters and subclusters
+        id_to_cluster = dict(zip(chunk_ids, chunk_clusters))
+        id_to_subcluster = dict(zip(chunk_ids, chunk_subclusters))
+
+        # Map clusters and subclusters to the DataFrame using the dictionaries
+        chunk_df['cluster'] = chunk_df['id'].map(id_to_cluster)
+        chunk_df['subcluster'] = chunk_df['id'].map(id_to_subcluster)
+
+        # Vectorized URL creation
+        chunk_df['url'] = 'https://www.reddit.com/r/' + chunk_df['subreddit'] + '/comments/' + chunk_df['id'] + '/'
+
 
         chunk_df = chunk_df[chunk_df.cluster != -1]  # Remove the unclustered posts
 

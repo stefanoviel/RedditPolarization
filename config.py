@@ -71,6 +71,7 @@ TFIDF_WORDS_PER_CLUSTER = 15
 TFIDF_FILE = os.path.join(OUTPUT_DIR, "tfidf.json")
 SUBCLUSTER_TFIDF_FILE = os.path.join(OUTPUT_DIR, "subcluster_tfidf.json")
 N_POST_PER_CLUSTER = 50_000
+N_POST_PER_SUBCLUSTER = 5000
 
 # topic Naming
 LLM_NAME = "gpt"

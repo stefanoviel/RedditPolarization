@@ -89,8 +89,6 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         columns = ['id', 'subreddit', 'created_utc', 'author']
         chunk_df = pd.DataFrame(rows, columns=columns)
 
-        # Filter out unclustered posts
-        chunk_df = chunk_df[chunk_df.cluster != -1]
 
         # Create a dictionary for faster lookup of clusters and subclusters
         id_to_cluster = dict(zip(chunk_ids, chunk_clusters))
@@ -99,6 +97,9 @@ def create_db_chunked(DATABASE_PATH, PROCESSED_REDDIT_DATA, IDS_DB_NAME, CLUSTER
         # Map clusters and subclusters to the DataFrame using the dictionaries
         chunk_df['cluster'] = chunk_df['id'].map(id_to_cluster)
         chunk_df['subcluster'] = chunk_df['id'].map(id_to_subcluster)
+
+        # Filter out unclustered posts
+        chunk_df = chunk_df[chunk_df.cluster != -1]
 
         # Create the URL DataFrame
         url_df = chunk_df[['id', 'subreddit']].copy()
